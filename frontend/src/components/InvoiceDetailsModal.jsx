@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, Phone, Mail, FileText, CheckCircle, AlertTriangle, Send } from 'lucide-react';
 
-export default function InvoiceDetailsModal({ invoiceId, onClose, onActionLogged }) {
+export default function InvoiceDetailsModal({ invoiceId, onClose, onActionLogged, token }) {
   const [invoice, setInvoice] = useState(null);
   const [history, setHistory] = useState([]);
   const [reminders, setReminders] = useState([]);
@@ -21,7 +21,9 @@ export default function InvoiceDetailsModal({ invoiceId, onClose, onActionLogged
   const [selectedTemplate, setSelectedTemplate] = useState('incapacidad');
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  const API_URL = 'http://localhost:8000/api';
+  const API_URL = window.location.origin === 'http://localhost:5173' 
+    ? 'http://localhost:8000/api' 
+    : `${window.location.origin}/api`;
 
   useEffect(() => {
     fetchInvoiceDetails();
@@ -30,7 +32,9 @@ export default function InvoiceDetailsModal({ invoiceId, onClose, onActionLogged
   const fetchInvoiceDetails = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/invoices/${invoiceId}`);
+      const res = await fetch(`${API_URL}/invoices/${invoiceId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setInvoice(data.invoice);
       setHistory(data.history);
@@ -145,7 +149,10 @@ ASBASALUD E.S.E. Manizales`;
       setSavingAction(true);
       const res = await fetch(`${API_URL}/invoices/${invoiceId}/history`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           tipo_gestion: tipoGestion,
           descripcion: descripcion,
@@ -172,7 +179,10 @@ ASBASALUD E.S.E. Manizales`;
       // 1. Create reminder record in DB first
       const resGen = await fetch(`${API_URL}/reminders/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           invoice_id: invoiceId,
           destinatario: emailTo,
@@ -185,7 +195,8 @@ ASBASALUD E.S.E. Manizales`;
       if (resGen.ok) {
         // 2. Simulate sending the email (visual confirmation action)
         const resSend = await fetch(`${API_URL}/reminders/${dataGen.id}/send`, {
-          method: 'POST'
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (resSend.ok) {

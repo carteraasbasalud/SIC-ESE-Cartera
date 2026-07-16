@@ -1770,6 +1770,7 @@ export default function App() {
       {selectedInvoiceId && (
         <InvoiceDetailsModal 
           invoiceId={selectedInvoiceId} 
+          token={token}
           onClose={() => setSelectedInvoiceId(null)}
           onActionLogged={() => {
             fetchStats();
