@@ -24,7 +24,8 @@ import {
   FileText,
   Printer,
   ChevronLeftCircle,
-  Percent
+  Percent,
+  LogOut
 } from 'lucide-react';
 import InvoiceDetailsModal from './components/InvoiceDetailsModal';
 
@@ -99,18 +100,74 @@ export default function App() {
     ? 'http://localhost:8000/api' 
     : `${window.location.origin}/api`;
 
+  const [token, setToken] = useState(localStorage.getItem('sic_ese_token') || null);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const authenticatedFetch = async (url, options = {}) => {
+    const savedToken = localStorage.getItem('sic_ese_token');
+    const headers = {
+      ...options.headers,
+    };
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+    if (response.status === 401) {
+      localStorage.removeItem('sic_ese_token');
+      setToken(null);
+      throw new Error('Sesión expirada o no autorizada. Por favor inicie sesión nuevamente.');
+    }
+    return response;
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      });
+      const data = await res.json();
+      if (res.status === 200 && data.token) {
+        localStorage.setItem('sic_ese_token', data.token);
+        setToken(data.token);
+      } else {
+        setLoginError(data.detail || 'Credenciales incorrectas');
+      }
+    } catch (err) {
+      setLoginError('Error de conexión con el servidor');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('sic_ese_token');
+    setToken(null);
+  };
 
   useEffect(() => {
-    fetchStats();
-    fetchConcentration();
-    fetchAlerts();
-    fetchReminders();
-    fetchSmtpSettings();
-  }, []);
+    if (token) {
+      fetchStats();
+      fetchConcentration();
+      fetchAlerts();
+      fetchReminders();
+      fetchSmtpSettings();
+    }
+  }, [token]);
 
   const fetchSmtpSettings = async () => {
     try {
-      const res = await fetch(`${API_URL}/settings/smtp`);
+      const res = await authenticatedFetch(`${API_URL}/settings/smtp`);
       const data = await res.json();
       if (data.configured) {
         setSmtpProvider(data.provider || 'smtp');
@@ -129,7 +186,7 @@ export default function App() {
     e.preventDefault();
     try {
       setSmtpSaving(true);
-      const res = await fetch(`${API_URL}/settings/smtp`, {
+      const res = await authenticatedFetch(`${API_URL}/settings/smtp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,7 +226,7 @@ export default function App() {
     try {
       setSmtpTesting(true);
       setSmtpTestMessage("Enviando correo de prueba...");
-      const res = await fetch(`${API_URL}/settings/smtp/test`, {
+      const res = await authenticatedFetch(`${API_URL}/settings/smtp/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,7 +271,7 @@ export default function App() {
   const fetchStats = async () => {
     try {
       setLoadingStats(true);
-      const res = await fetch(`${API_URL}/stats`);
+      const res = await authenticatedFetch(`${API_URL}/stats`);
       const data = await res.json();
       setStats(data);
     } catch (err) {
@@ -227,7 +284,7 @@ export default function App() {
   const fetchConcentration = async () => {
     try {
       setLoadingConcentration(true);
-      const res = await fetch(`${API_URL}/stats/concentration`);
+      const res = await authenticatedFetch(`${API_URL}/stats/concentration`);
       const data = await res.json();
       setConcentration(data);
     } catch (err) {
@@ -246,7 +303,7 @@ export default function App() {
       if (categoryFilter) url += `&categoria=${encodeURIComponent(categoryFilter)}`;
       if (ageFilter) url += `&age_range=${encodeURIComponent(ageFilter)}`;
 
-      const res = await fetch(url);
+      const res = await authenticatedFetch(url);
       const data = await res.json();
       setInvoices(data.data);
       setTotalRecords(data.total_records);
@@ -261,7 +318,7 @@ export default function App() {
   const fetchAlerts = async () => {
     try {
       setLoadingAlerts(true);
-      const res = await fetch(`${API_URL}/alerts`);
+      const res = await authenticatedFetch(`${API_URL}/alerts`);
       const data = await res.json();
       setAlerts(data);
     } catch (err) {
@@ -274,7 +331,7 @@ export default function App() {
   const fetchReminders = async () => {
     try {
       setLoadingReminders(true);
-      const res = await fetch(`${API_URL}/reminders`);
+      const res = await authenticatedFetch(`${API_URL}/reminders`);
       const data = await res.json();
       setReminders(data);
     } catch (err) {
@@ -290,7 +347,7 @@ export default function App() {
       setSelectedEpsNit(nit);
       setActivePage('eps-detail');
       
-      const res = await fetch(`${API_URL}/eps/${nit}`);
+      const res = await authenticatedFetch(`${API_URL}/eps/${nit}`);
       const data = await res.json();
       setEpsDetail(data);
     } catch (err) {
@@ -304,7 +361,7 @@ export default function App() {
 
   const loadCoercitivoData = async (nit) => {
     try {
-      const res = await fetch(`${API_URL}/eps/${nit}/coercitivo-data`);
+      const res = await authenticatedFetch(`${API_URL}/eps/${nit}/coercitivo-data`);
       const data = await res.json();
       setCoercitivoData(data);
       setShowCoercitivoPrint(true);
@@ -316,7 +373,7 @@ export default function App() {
 
   const handleSendReminder = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/reminders/${id}/send`, { method: 'POST' });
+      const res = await authenticatedFetch(`${API_URL}/reminders/${id}/send`, { method: 'POST' });
       if (res.ok) {
         alert("¡Recordatorio automático enviado exitosamente (Simulado)!");
         fetchReminders();
@@ -342,7 +399,7 @@ export default function App() {
     try {
       setUploading(true);
       setUploadMessage('Cargando y procesando archivo... Esto puede tardar unos segundos.');
-      const res = await fetch(`${API_URL}/upload`, {
+      const res = await authenticatedFetch(`${API_URL}/upload`, {
         method: 'POST',
         body: formData
       });
@@ -493,6 +550,53 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  if (!token) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <div className="login-header">
+            <div className="login-logo-circle">C</div>
+            <h2>SIC-ESE</h2>
+            <p>Sistema Inteligente de Gestión de Cartera</p>
+            <span className="hospital-tag">ASBASALUD E.S.E. Manizales</span>
+          </div>
+          
+          <form onSubmit={handleLogin} className="login-form">
+            <div className="form-group">
+              <label>Usuario</label>
+              <input 
+                type="text" 
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                placeholder="Ingrese su usuario"
+                required
+                autoComplete="username"
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Contraseña</label>
+              <input 
+                type="password" 
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="Ingrese su contraseña"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+            
+            {loginError && <div className="login-error-msg">{loginError}</div>}
+            
+            <button type="submit" className="login-btn" disabled={loginLoading}>
+              {loginLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Sidebar */}
@@ -551,13 +655,19 @@ export default function App() {
         </ul>
 
         <div className="sidebar-footer">
-          <div className="user-avatar">
-            {currentUser.split(' ').map(n => n[0]).join('')}
+          <div className="user-profile-row">
+            <div className="user-avatar">
+              {currentUser.split(' ').map(n => n[0]).join('')}
+            </div>
+            <div className="user-info">
+              <h4>{currentUser}</h4>
+              <p>Jefe de Cartera (ASBASALUD)</p>
+            </div>
           </div>
-          <div className="user-info">
-            <h4>{currentUser}</h4>
-            <p>Jefe de Cartera (ASBASALUD)</p>
-          </div>
+          <button className="logout-btn" onClick={handleLogout}>
+            <LogOut size={16} />
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </div>
 

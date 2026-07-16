@@ -1,6 +1,22 @@
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# Token de sesion estatico seguro
+SECRET_TOKEN = "sic_ese_secure_token_2026_hframirez"
+
+def verify_token(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No autorizado")
+    token = authorization.split(" ")[1]
+    if token != SECRET_TOKEN:
+        raise HTTPException(status_code=401, detail="Token invalido o expirado")
+    return token
+
 import sqlite3
 import os
 import sys
@@ -17,6 +33,19 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from db import get_db_connection, DB_PATH
 
 app = FastAPI(title="Sistema Inteligente de Cartera E.S.E. API")
+
+@app.post("/api/login")
+def login(login_data: LoginRequest):
+    if login_data.username == "Hframirez" and login_data.password == "3041989":
+        return {
+            "status": "success",
+            "token": SECRET_TOKEN,
+            "user": {
+                "username": "Hframirez",
+                "role": "Jefe de Cartera (S. Partner)"
+            }
+        }
+    raise HTTPException(status_code=400, detail="Usuario o contrasena incorrectos")
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -73,7 +102,7 @@ def health():
     return {"status": "ok", "db_connected": os.path.exists(DB_PATH)}
 
 @app.get("/api/stats")
-def get_stats():
+def get_stats(token: str = Depends(verify_token)):
     # 1. Overall metrics
     total_balance_query = "SELECT SUM(saldo) as total_saldo, COUNT(*) as total_count FROM invoices;"
     total_metrics = execute_query(total_balance_query, fetchone=True) or {"total_saldo": 0, "total_count": 0}
@@ -143,7 +172,8 @@ def get_invoices(
     max_saldo: float = None,
     age_range: str = None,
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=500)
+    page_size: int = Query(50, ge=1, le=500),
+    token: str = Depends(verify_token)
 ):
     where_clauses = []
     params = []
@@ -212,7 +242,7 @@ def get_invoices(
     }
 
 @app.get("/api/invoices/{invoice_id}")
-def get_invoice_detail(invoice_id: int):
+def get_invoice_detail(invoice_id: int, token: str = Depends(verify_token)):
     invoice = execute_query("SELECT * FROM invoices WHERE id = ?;", (invoice_id,), fetchone=True)
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -236,7 +266,7 @@ def get_invoice_detail(invoice_id: int):
     }
 
 @app.post("/api/invoices/{invoice_id}/history")
-def add_collection_history(invoice_id: int, history_data: CollectionHistoryCreate):
+def add_collection_history(invoice_id: int, history_data: CollectionHistoryCreate, token: str = Depends(verify_token)):
     invoice = execute_query("SELECT id FROM invoices WHERE id = ?;", (invoice_id,), fetchone=True)
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -253,7 +283,7 @@ def add_collection_history(invoice_id: int, history_data: CollectionHistoryCreat
     return {"status": "success", "id": history_id, "fecha_gestion": now_str}
 
 @app.get("/api/alerts")
-def get_alerts():
+def get_alerts(token: str = Depends(verify_token)):
     # Alert 1: Incapacidades (Personal Disabilities) that exceed 15 business days (approx. 21 calendar days)
     # Legal limit for EPS to pay or reject is 15 business days.
     disability_alerts_query = """
@@ -304,7 +334,7 @@ def get_alerts():
     }
 
 @app.get("/api/reminders")
-def get_reminders(estado: str = None):
+def get_reminders(estado: str = None, token: str = Depends(verify_token)):
     query = """
         SELECT r.*, i.consecutiv, i.nombre as entidad, i.saldo
         FROM automatic_reminders r
@@ -319,7 +349,7 @@ def get_reminders(estado: str = None):
     return execute_query(query, params, fetchall=True)
 
 @app.post("/api/reminders/generate")
-def generate_reminder(invoice_id: int, r_data: ReminderCreate):
+def generate_reminder(invoice_id: int, r_data: ReminderCreate, token: str = Depends(verify_token)):
     invoice = execute_query("SELECT id FROM invoices WHERE id = ?;", (invoice_id,), fetchone=True)
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -419,7 +449,7 @@ def send_email_unified(to_email, subject, body):
         raise RuntimeError(f"Error SMTP: {str(e)}")
 
 @app.post("/api/reminders/{reminder_id}/send")
-def send_reminder(reminder_id: int):
+def send_reminder(reminder_id: int, token: str = Depends(verify_token)):
     reminder = execute_query("SELECT * FROM automatic_reminders WHERE id = ?;", (reminder_id,), fetchone=True)
     if not reminder:
         raise HTTPException(status_code=404, detail="Recordatorio no encontrado")
@@ -459,7 +489,7 @@ def send_reminder(reminder_id: int):
 
 
 @app.post("/api/upload")
-def upload_file(file: UploadFile = File(...)):
+def upload_file(file: UploadFile = File(...), token: str = Depends(verify_token)):
     # Save the file to local path (overwrite existing)
     target_path = r"g:\PROYECTOS-IA\Cartera\ESTADO CARTERA CORTE DIC 2025.xlsx"
     backup_path = r"g:\PROYECTOS-IA\Cartera\ESTADO CARTERA CORTE DIC 2025_BAK.xlsx"
@@ -498,7 +528,7 @@ def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/stats/concentration")
-def get_concentration():
+def get_concentration(token: str = Depends(verify_token)):
     # Mayor Deuda Nominal: top 5 EPS by sum of saldo
     deuda_query = """
         SELECT nombre as entidad, nit, SUM(saldo) as saldo, COUNT(*) as count 
@@ -542,7 +572,7 @@ def get_concentration():
     }
 
 @app.get("/api/eps/{nit}")
-def get_eps_detail(nit: str):
+def get_eps_detail(nit: str, token: str = Depends(verify_token)):
     # Get name and nit
     eps_info = execute_query(
         "SELECT nombre, nit, SUM(saldo) as total_saldo, COUNT(*) as count FROM invoices WHERE nit = ? LIMIT 1;", 
@@ -606,7 +636,7 @@ def get_eps_detail(nit: str):
     }
 
 @app.get("/api/eps/{nit}/coercitivo-data")
-def get_coercitivo_data(nit: str):
+def get_coercitivo_data(nit: str, token: str = Depends(verify_token)):
     eps_info = execute_query("SELECT nombre, nit FROM invoices WHERE nit = ? LIMIT 1;", (nit,), fetchone=True)
     if not eps_info:
         raise HTTPException(status_code=404, detail="EPS no encontrada")
@@ -639,7 +669,7 @@ def get_coercitivo_data(nit: str):
     }
 
 @app.get("/api/settings/smtp")
-def get_smtp_settings():
+def get_smtp_settings(token: str = Depends(verify_token)):
     if not os.path.exists(SMTP_CONFIG_PATH):
         return {
             "provider": "smtp",
@@ -667,7 +697,7 @@ def get_smtp_settings():
     }
 
 @app.post("/api/settings/smtp")
-def save_smtp_settings(config: SmtpConfig):
+def save_smtp_settings(config: SmtpConfig, token: str = Depends(verify_token)):
     config_dict = {
         "provider": config.provider,
         "smtp_server": config.smtp_server,
@@ -691,7 +721,7 @@ def save_smtp_settings(config: SmtpConfig):
     return {"status": "success", "message": "Configuración de correo guardada exitosamente"}
 
 @app.post("/api/settings/smtp/test")
-def test_smtp_settings(test_req: SmtpTestRequest):
+def test_smtp_settings(test_req: SmtpTestRequest, token: str = Depends(verify_token)):
     if not os.path.exists(SMTP_CONFIG_PATH):
         raise HTTPException(status_code=400, detail="Debe guardar la configuración de correo primero")
         
