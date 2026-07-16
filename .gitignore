@@ -1,0 +1,28 @@
+# Node.js
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# Logs and temp files
+backend/config.json
+config.json
+*.log
+*.zip
+.tempmediaStorage/
+.DS_Store
+Thumbs.db
+
