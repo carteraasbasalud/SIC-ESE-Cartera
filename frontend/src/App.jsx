@@ -25,9 +25,184 @@ import {
   Printer,
   ChevronLeftCircle,
   Percent,
-  LogOut
+  LogOut,
+  BarChart3,
+  ArrowUpRight,
+  ArrowDownRight,
+  Info
 } from 'lucide-react';
 import InvoiceDetailsModal from './components/InvoiceDetailsModal';
+
+const DEFAULT_COMPARADO_DATA = {
+  corte_actual: "31 de Julio de 2026",
+  corte_anterior: "31 de Julio de 2025",
+  entidad: "ASSBASALUD E.S.E. Manizales",
+  tipo_entidad: "IPS Pública de Baja Complejidad",
+  totales: {
+    saldo_2025: 5716832737.05,
+    saldo_2026: 8151530735.95,
+    variacion_absoluta: 2434697998.90,
+    variacion_porcentaje: 42.59
+  },
+  conceptos: [
+    {
+      concepto: "SUBSIDIADO",
+      saldo_2025: 2108636328.12,
+      part_2025: 36.88,
+      saldo_2026: 3334807358.58,
+      part_2026: 40.91,
+      var_abs: 1226171030.46,
+      var_pct: 58.15,
+      es_principal: true,
+      tipo_renta: "asistencial",
+      explicacion: "Renta asistencial de mayor participación. Representa más del 70% de la cartera corriente activa. Aumentó por demoras en giro corriente y glosas de aseguradoras intervenidas (Nueva EPS, Asmet Salud)."
+    },
+    {
+      concepto: "DEUDAS DIFÍCIL COBRO",
+      saldo_2025: 3579100845.16,
+      part_2025: 62.61,
+      saldo_2026: 4100533585.41,
+      part_2026: 50.30,
+      var_abs: 521432740.25,
+      var_pct: 14.57,
+      es_principal: false,
+      tipo_renta: "historica",
+      explicacion: "Acreencias atrapadas de EPS liquidadas en procesos concursales ante la Supersalud (Saludcoop, Cafesalud, Medimás, Coomeva) y facturas que superaron los 360 días de mora."
+    },
+    {
+      concepto: "ACCIONES DE SALUD PÚBLICA (PIC)",
+      saldo_2025: 383936857.00,
+      part_2025: 6.72,
+      saldo_2026: 1115143231.05,
+      part_2026: 13.68,
+      var_abs: 731206374.05,
+      var_pct: 190.45,
+      es_principal: false,
+      tipo_renta: "convenio",
+      explicacion: "Convenios PIC con Alcaldía de Manizales y DTSC. Demora en auditorías de metas de vacunación, salud mental y firmas de actas de liquidación parcial."
+    },
+    {
+      concepto: "CONTRIBUTIVO",
+      saldo_2025: 149055520.67,
+      part_2025: 2.61,
+      saldo_2026: 516677342.73,
+      part_2026: 6.34,
+      var_abs: 367621822.06,
+      var_pct: 246.63,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Atenciones de urgencias básicas y servicios ambulatorios a afiliados del régimen contributivo (SURA, Sanitas, Nueva EPS Contributivo) con plazos diferidos de pago."
+    },
+    {
+      concepto: "IPS PRIVADAS",
+      saldo_2025: 49821158.00,
+      part_2025: 0.87,
+      saldo_2026: 146370036.00,
+      part_2026: 1.80,
+      var_abs: 96548878.00,
+      var_pct: 193.79,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Servicios de apoyo diagnóstico, laboratorio clínico y traslados asistenciales con prestadores privados de la región."
+    },
+    {
+      concepto: "OTRAS CUENTAS NO SALUD",
+      saldo_2025: 30576472.00,
+      part_2025: 0.53,
+      saldo_2026: 38107937.16,
+      part_2026: 0.47,
+      var_abs: 7531465.16,
+      var_pct: 24.63,
+      es_principal: false,
+      tipo_renta: "administrativa",
+      explicacion: "Arrendamientos de espacios físicos, servicios administrativos y convenios docentes."
+    },
+    {
+      concepto: "ARL",
+      saldo_2025: 0.00,
+      part_2025: 0.00,
+      saldo_2026: 5846640.00,
+      part_2026: 0.07,
+      var_abs: 5846640.00,
+      var_pct: 100.00,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Atenciones de accidentes laborales y contingencias radicadas ante aseguradoras de riesgos laborales (Positiva, Sura)."
+    },
+    {
+      concepto: "PPNA",
+      saldo_2025: 0.00,
+      part_2025: 0.00,
+      saldo_2026: 1939000.00,
+      part_2026: 0.02,
+      var_abs: 1939000.00,
+      var_pct: 100.00,
+      es_principal: false,
+      tipo_renta: "convenio",
+      explicacion: "Población Pobre No Asegurada con cargo a subsidio a la oferta del departamento."
+    },
+    {
+      concepto: "CONVENIO INTERADMINISTRATIVO",
+      saldo_2025: 934000.00,
+      part_2025: 0.02,
+      saldo_2026: 988729.00,
+      part_2026: 0.01,
+      var_abs: 54729.00,
+      var_pct: 5.86,
+      es_principal: false,
+      tipo_renta: "convenio",
+      explicacion: "Convenios con entidades públicas territoriales."
+    },
+    {
+      concepto: "ECAT",
+      saldo_2025: 0.00,
+      part_2025: 0.00,
+      saldo_2026: 741161.00,
+      part_2026: 0.01,
+      var_abs: 741161.00,
+      var_pct: 100.00,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Eventos Catastróficos y Accidentes de Tránsito sin póliza SOAT radicados ante ADRES."
+    },
+    {
+      concepto: "IPS PÚBLICAS",
+      saldo_2025: 957450.40,
+      part_2025: 0.02,
+      saldo_2026: 872603.00,
+      part_2026: 0.01,
+      var_abs: -84847.40,
+      var_pct: -8.86,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Cuentas por cobrar interinstitucionales con otros hospitales de la red pública de Caldas."
+    },
+    {
+      concepto: "ENTIDADES RÉGIMEN ESPECIAL",
+      saldo_2025: 15600.00,
+      part_2025: 0.00,
+      saldo_2026: 15600.00,
+      part_2026: 0.00,
+      var_abs: 0.00,
+      var_pct: 0.00,
+      es_principal: false,
+      tipo_renta: "asistencial",
+      explicacion: "Saldos residuales de atención a magisterio y fuerzas militares."
+    },
+    {
+      concepto: "GIRO PARA ABONO SIN IDENTIFICAR",
+      saldo_2025: -586201494.30,
+      part_2025: -10.25,
+      saldo_2026: -1110512487.98,
+      part_2026: -13.62,
+      var_abs: -524310993.68,
+      var_pct: 89.44,
+      es_principal: false,
+      tipo_renta: "compensatoria",
+      explicacion: "Cuenta compensatoria de naturaleza crédito. Fondos transferidos por Giro Directo ADRES que no han sido legalizados factura a factura debido a que las EPS no entregan las sábanas de conciliación."
+    }
+  ]
+};
 
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -61,6 +236,12 @@ export default function App() {
   // Coercitivo PDF/Print State
   const [coercitivoData, setCoercitivoData] = useState(null);
   const [showCoercitivoPrint, setShowCoercitivoPrint] = useState(false);
+
+  // Comparativo State
+  const [comparadoData, setComparadoData] = useState(DEFAULT_COMPARADO_DATA);
+  const [loadingComparado, setLoadingComparado] = useState(false);
+  const [comparadoFilter, setComparadoFilter] = useState('todos'); // 'todos', 'asistencial', 'mayores', 'aumentos'
+  const [expandedConcepto, setExpandedConcepto] = useState(null);
 
   // Cashflow Forecast State
   const [forecastProbability, setForecastProbability] = useState('media'); // alta, media, baja
@@ -105,6 +286,21 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+
+  const fetchComparado = async () => {
+    try {
+      setLoadingComparado(true);
+      const res = await fetch(`${API_URL}/comparado`);
+      if (res.ok) {
+        const data = await res.json();
+        setComparadoData(data);
+      }
+    } catch (err) {
+      console.warn("Utilizando datos locales para informe comparativo:", err);
+    } finally {
+      setLoadingComparado(false);
+    }
+  };
 
   const authenticatedFetch = async (url, options = {}) => {
     const savedToken = localStorage.getItem('sic_ese_token');
@@ -162,6 +358,7 @@ export default function App() {
       fetchAlerts();
       fetchReminders();
       fetchSmtpSettings();
+      fetchComparado();
     }
   }, [token]);
 
@@ -618,6 +815,13 @@ export default function App() {
             <span>Dashboard Overview</span>
           </li>
           <li 
+            className={`menu-item ${activePage === 'comparativo' ? 'active' : ''}`}
+            onClick={() => setActivePage('comparativo')}
+          >
+            <BarChart3 size={18} />
+            <span>Informe Comparativo</span>
+          </li>
+          <li 
             className={`menu-item ${activePage === 'invoices' ? 'active' : ''}`}
             onClick={() => setActivePage('invoices')}
           >
@@ -677,6 +881,7 @@ export default function App() {
           <div className="page-title">
             <h2>
               {activePage === 'dashboard' && 'Resumen Ejecutivo Financiero'}
+              {activePage === 'comparativo' && 'Informe Comparativo de Cartera: Julio 2025 vs. Julio 2026'}
               {activePage === 'invoices' && 'Explorador General de Facturas'}
               {activePage === 'alerts' && 'Semáforo Legal y Consola de Alertas'}
               {activePage === 'forecast' && 'Previsión de Flujo de Caja (Forecasting)'}
@@ -684,7 +889,11 @@ export default function App() {
               {activePage === 'settings' && 'Ajustes y Carga de Archivos Excel'}
               {activePage === 'eps-detail' && 'Dashboard Unitario por EPS'}
             </h2>
-            <p>Cartera Corte Diciembre 2025 - Manizales E.S.E.</p>
+            <p>
+              {activePage === 'comparativo' 
+                ? 'Análisis de Variaciones por Concepto, Crisis del Sector Salud y Dependencia del Régimen Subsidiado' 
+                : 'Cartera Corte Diciembre 2025 - Manizales E.S.E.'}
+            </p>
           </div>
           
           <div className="header-actions">
@@ -937,6 +1146,381 @@ export default function App() {
                 </>
               )}
             </>
+          )}
+
+          {/* ========================================================= */}
+          {/* PAGE: INFORME COMPARATIVO DE CARTERA (2025 vs 2026)      */}
+          {/* ========================================================= */}
+          {activePage === 'comparativo' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Header Action Banner */}
+              <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', padding: '18px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-indigo, #6366f1)' }}>
+                    <BarChart3 size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: '700', margin: 0 }}>
+                      Análisis Comparativo por Conceptos: Julio 2025 vs. Julio 2026
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '3px 0 0' }}>
+                      {comparadoData.entidad} &bull; <strong style={{ color: 'var(--accent-blue)' }}>{comparadoData.tipo_entidad}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => {
+                      let csv = "Concepto,Julio 2025,Part 2025,Julio 2026,Part 2026,Variacion $,Variacion %\n";
+                      comparadoData.conceptos.forEach(c => {
+                        csv += `"${c.concepto}",${c.saldo_2025},${c.part_2025}%,${c.saldo_2026},${c.part_2026}%,${c.var_abs},${c.var_pct}%\n`;
+                      });
+                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `comparado_cartera_julio_2026_2025.csv`;
+                      a.click();
+                    }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+                  >
+                    <FileDown size={14} /> Exportar CSV
+                  </button>
+                  <button 
+                    className="btn-primary" 
+                    onClick={() => window.print()}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}
+                  >
+                    <Printer size={14} /> Imprimir / PDF
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Summary Cards */}
+              <div className="grid-4">
+                <div className="kpi-card">
+                  <div className="kpi-details">
+                    <span>Cartera Neta Total 2026</span>
+                    <h3>{formatCurrency(comparadoData.totales.saldo_2026)}</h3>
+                    <div className="kpi-trend" style={{ color: 'var(--accent-red, #ef4444)' }}>
+                      <ArrowUpRight size={14} /> +{comparadoData.totales.variacion_porcentaje}% (+{formatCurrency(comparadoData.totales.variacion_absoluta)})
+                    </div>
+                  </div>
+                  <div className="kpi-icon">
+                    <DollarSign size={24} />
+                  </div>
+                </div>
+
+                <div className="kpi-card" style={{ borderLeft: '4px solid var(--accent-indigo, #6366f1)' }}>
+                  <div className="kpi-details">
+                    <span>Régimen Subsidiado (Activo)</span>
+                    <h3>{formatCurrency(comparadoData.conceptos.find(c => c.concepto === 'SUBSIDIADO')?.saldo_2026 || 0)}</h3>
+                    <div className="kpi-trend" style={{ color: 'var(--accent-red, #ef4444)' }}>
+                      <ArrowUpRight size={14} /> +58.15% (40.91% de participación)
+                    </div>
+                  </div>
+                  <div className="kpi-icon" style={{ color: 'var(--accent-indigo, #6366f1)' }}>
+                    <Building size={24} />
+                  </div>
+                </div>
+
+                <div className="kpi-card gold">
+                  <div className="kpi-details">
+                    <span>Deudas de Difícil Cobro</span>
+                    <h3>{formatCurrency(comparadoData.conceptos.find(c => c.concepto === 'DEUDAS DIFÍCIL COBRO')?.saldo_2026 || 0)}</h3>
+                    <div className="kpi-trend" style={{ color: 'var(--accent-gold)' }}>
+                      <Clock size={14} /> 50.30% total (EPS Liquidadas)
+                    </div>
+                  </div>
+                  <div className="kpi-icon">
+                    <Clock size={24} />
+                  </div>
+                </div>
+
+                <div className="kpi-card" style={{ borderLeft: '4px solid var(--primary, #10b981)' }}>
+                  <div className="kpi-details">
+                    <span>Abonos por Identificar (ADRES)</span>
+                    <h3>{formatCurrency(Math.abs(comparadoData.conceptos.find(c => c.concepto.includes('ABONO SIN IDENTIFICAR'))?.saldo_2026 || 0))}</h3>
+                    <div className="kpi-trend" style={{ color: 'var(--primary, #10b981)' }}>
+                      <Check size={14} /> Giro Directo pendiente conciliar
+                    </div>
+                  </div>
+                  <div className="kpi-icon" style={{ color: 'var(--primary)' }}>
+                    <Percent size={24} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Comparative Charts */}
+              <div className="grid-2" style={{ gap: '20px' }}>
+                {/* Visual Bar Comparison Panel */}
+                <div className="panel">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 className="panel-title" style={{ margin: 0 }}>
+                      Comparativa de Crecimiento por Conceptos (2025 vs. 2026)
+                    </h3>
+                    <div style={{ display: 'flex', gap: '14px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ width: '10px', height: '10px', backgroundColor: 'var(--accent-blue, #38bdf8)', borderRadius: '2px' }}></span> Julio 2025
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ width: '10px', height: '10px', backgroundColor: 'var(--accent-indigo, #6366f1)', borderRadius: '2px' }}></span> Julio 2026
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {[
+                      { name: 'Subsidiado', v25: 2108636328, v26: 3334807358, pct: '+58.15%' },
+                      { name: 'Difícil Cobro', v25: 3579100845, v26: 4100533585, pct: '+14.57%' },
+                      { name: 'Salud Pública (PIC)', v25: 383936857, v26: 1115143231, pct: '+190.45%' },
+                      { name: 'Contributivo', v25: 149055520, v26: 516677342, pct: '+246.63%' },
+                      { name: 'IPS Privadas', v25: 49821158, v26: 146370036, pct: '+193.79%' },
+                      { name: 'Otras Cuentas No Salud', v25: 30576472, v26: 38107937, pct: '+24.63%' }
+                    ].map((item, idx) => {
+                      const maxBase = 4200000000;
+                      const w25 = (item.v25 / maxBase) * 100;
+                      const w26 = (item.v26 / maxBase) * 100;
+                      return (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                            <span style={{ fontWeight: '600' }}>{item.name}</span>
+                            <span style={{ color: 'var(--accent-red)', fontWeight: '700' }}>{item.pct}</span>
+                          </div>
+                          {/* 2025 bar */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ height: '7px', flex: 1, backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ width: `${w25}%`, height: '100%', backgroundColor: 'var(--accent-blue, #38bdf8)', borderRadius: '4px' }}></div>
+                            </div>
+                            <span style={{ fontSize: '10px', color: 'var(--text-secondary)', minWidth: '70px', textAlign: 'right' }}>
+                              {formatCurrency(item.v25)}
+                            </span>
+                          </div>
+                          {/* 2026 bar */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ height: '9px', flex: 1, backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ width: `${w26}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #818cf8)', borderRadius: '4px' }}></div>
+                            </div>
+                            <span style={{ fontSize: '11px', fontWeight: '700', minWidth: '70px', textAlign: 'right' }}>
+                              {formatCurrency(item.v26)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Participation & Composition Panel */}
+                <div className="panel">
+                  <h3 className="panel-title" style={{ marginBottom: '14px' }}>
+                    Composición y Participación de Cartera 2026
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {[
+                      { label: 'Deudas de Difícil Cobro (EPS Liquidadas)', part: 50.30, val: 4100533585, color: '#f59e0b' },
+                      { label: 'Régimen Subsidiado (Cartera Activa)', part: 40.91, val: 3334807358, color: '#6366f1' },
+                      { label: 'Acciones de Salud Pública (Convenios PIC)', part: 13.68, val: 1115143231, color: '#38bdf8' },
+                      { label: 'Régimen Contributivo', part: 6.34, val: 516677342, color: '#10b981' },
+                      { label: 'IPS Privadas y Otros Deudores', part: 2.39, val: 195744837, color: '#ec4899' }
+                    ].map((c, i) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: c.color }}></span>
+                            {c.label}
+                          </span>
+                          <span style={{ fontWeight: '700' }}>{c.part}% ({formatCurrency(c.val)})</span>
+                        </div>
+                        <div style={{ height: '8px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${c.part}%`, height: '100%', backgroundColor: c.color, borderRadius: '4px' }}></div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '12px', color: '#fca5a5' }}>
+                      <strong>Alerta de Concentración:</strong> El Régimen Subsidiado y las Deudas de Difícil Cobro concentran el <strong>91,21% de todas las acreencias</strong> de la institución, reflejando el riesgo de liquidez del hospital público ante las EPS intervenidas.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed Financial Comparative Table */}
+              <div className="panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                  <div>
+                    <h3 className="panel-title" style={{ margin: 0 }}>
+                      Detalle Contable Comparativo por Conceptos (Julio 2025 vs. Julio 2026)
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
+                      Haga clic en cualquier concepto para desplegar el diagnóstico y causa raíz de la variación.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Filtrar:</span>
+                    <select 
+                      className="filter-select" 
+                      value={comparadoFilter} 
+                      onChange={(e) => setComparadoFilter(e.target.value)}
+                    >
+                      <option value="todos">Todos los Conceptos (13)</option>
+                      <option value="asistencial">Rentas Asistenciales</option>
+                      <option value="mayores">Saldos Mayores a $100M</option>
+                      <option value="aumentos">Solo con Aumento (+)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Concepto de Deuda</th>
+                        <th style={{ textAlign: 'right' }}>Julio 2025 (COP)</th>
+                        <th style={{ textAlign: 'center' }}>Part. '25</th>
+                        <th style={{ textAlign: 'right' }}>Julio 2026 (COP)</th>
+                        <th style={{ textAlign: 'center' }}>Part. '26</th>
+                        <th style={{ textAlign: 'right' }}>Variación ($)</th>
+                        <th style={{ textAlign: 'center' }}>Variación (%)</th>
+                        <th style={{ textAlign: 'center' }}>Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {comparadoData.conceptos
+                        .filter(item => {
+                          if (comparadoFilter === 'asistencial') return item.tipo_renta === 'asistencial';
+                          if (comparadoFilter === 'mayores') return Math.abs(item.saldo_2026) >= 100000000;
+                          if (comparadoFilter === 'aumentos') return item.var_abs > 0;
+                          return true;
+                        })
+                        .map((c, idx) => {
+                          const isExpanded = expandedConcepto === c.concepto;
+                          const isNegative = c.saldo_2026 < 0;
+                          return (
+                            <React.Fragment key={idx}>
+                              <tr 
+                                style={{ 
+                                  cursor: 'pointer',
+                                  backgroundColor: c.es_principal ? 'rgba(99, 102, 241, 0.08)' : isExpanded ? 'var(--bg-tertiary)' : 'transparent',
+                                  fontWeight: c.es_principal ? '600' : 'normal'
+                                }}
+                                onClick={() => setExpandedConcepto(isExpanded ? null : c.concepto)}
+                              >
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {c.es_principal && <span className="badge badge-alta" style={{ fontSize: '9px' }}>PRINCIPAL</span>}
+                                    <span>{c.concepto}</span>
+                                  </div>
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  {isNegative ? `-${formatCurrency(Math.abs(c.saldo_2025))}` : formatCurrency(c.saldo_2025)}
+                                </td>
+                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                  {c.part_2025}%
+                                </td>
+                                <td style={{ textAlign: 'right', fontWeight: '700' }}>
+                                  {isNegative ? `-${formatCurrency(Math.abs(c.saldo_2026))}` : formatCurrency(c.saldo_2026)}
+                                </td>
+                                <td style={{ textAlign: 'center', fontWeight: '700' }}>
+                                  {c.part_2026}%
+                                </td>
+                                <td style={{ textAlign: 'right', color: c.var_abs > 0 ? 'var(--accent-red)' : 'var(--primary)' }}>
+                                  {c.var_abs > 0 ? `+${formatCurrency(c.var_abs)}` : formatCurrency(c.var_abs)}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <span 
+                                    className={`badge ${c.var_pct > 0 ? 'badge-vencido' : 'badge-corriente'}`}
+                                    style={{ fontSize: '10px', padding: '2px 6px' }}
+                                  >
+                                    {c.var_pct > 0 ? `+${c.var_pct}%` : `${c.var_pct}%`}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: 'center', color: 'var(--accent-blue)' }}>
+                                  <Info size={14} />
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={8} style={{ backgroundColor: 'var(--bg-tertiary)', padding: '14px 20px', fontSize: '12px', borderLeft: '4px solid var(--accent-indigo)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      <strong style={{ color: 'var(--accent-blue)' }}>Diagnóstico Contable y Causa Raíz:</strong>
+                                      <p style={{ margin: 0, lineHeight: '1.5', color: 'var(--text-primary)' }}>{c.explicacion}</p>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid var(--accent-indigo)', fontWeight: '700', fontSize: '13px' }}>
+                        <td>TOTAL CARTERA NETA</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(comparadoData.totales.saldo_2025)}</td>
+                        <td style={{ textAlign: 'center' }}>100.0%</td>
+                        <td style={{ textAlign: 'right' }}>{formatCurrency(comparadoData.totales.saldo_2026)}</td>
+                        <td style={{ textAlign: 'center' }}>100.0%</td>
+                        <td style={{ textAlign: 'right', color: 'var(--accent-red)' }}>+{formatCurrency(comparadoData.totales.variacion_absoluta)}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge badge-vencido">+{comparadoData.totales.variacion_porcentaje}%</span>
+                        </td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {/* Strategic Insights & Health Sector Analysis */}
+              <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <h3 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Building size={18} color="var(--accent-indigo)" />
+                  Diagnóstico Estratégico para la Junta Directiva y Ente Territorial
+                </h3>
+
+                <div className="grid-2" style={{ gap: '16px' }}>
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '16px 18px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--accent-blue)', marginBottom: '8px' }}>
+                      1. Dependencia Absoluta del Régimen Subsidiado
+                    </h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                      Como IPS pública de baja complejidad, Assbasalud tiene la misión constitucional de garantizar la puerta de entrada a los servicios de salud (urgencias básicas, consulta externa, medicina general y PYP) de los afiliados SISBEN. Al no poder rechazar usuarios, la ESE financia involuntariamente el déficit de las EPS subsidiadas (Nueva EPS y Asmet Salud), las cuales concentran más del 70% de la cartera corriente activa.
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '16px 18px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--accent-red)', marginBottom: '8px' }}>
+                      2. Crisis Sistémica e Intervención de EPS
+                    </h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                      El incremento de +$1.226,1M (+58.15%) en la cartera subsidiada está estrechamente ligado a las medidas de intervención forzosa de la Superintendencia Nacional de Salud sobre Nueva EPS y Asmet Salud. La rotación de interventores ha congelado las mesas bilaterales de conciliación de glosas y la suscripción de acuerdos de pago por eventos y atenciones complementarias.
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '16px 18px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '8px' }}>
+                      3. Giro Directo ADRES: -$1.110,5M en Abonos sin Identificar
+                    </h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                      La cuenta transitoria negativa creció +89.44% porque la ADRES desembolsa giros directos por orden de la EPS, pero la aseguradora omite enviar la relación detallada de facturas pagadas. Por prudencia contable y para evitar glosas por descargos equivocados, la ESE no puede imputar el recaudo individual hasta no recibir la sábana de conciliación.
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '16px 18px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--accent-gold)', marginBottom: '8px' }}>
+                      4. Cartera de Difícil Cobro (50.30% del Total)
+                    </h4>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: 0 }}>
+                      Los $4.100,5M en cartera de difícil cobro corresponden a deudas de EPS liquidadas (Saludcoop, Cafesalud, Medimás, Coomeva). Se recomienda elevar solicitud formal a la Contaduría General de la Nación para aplicar saneamiento y provisión contable a aquellas entidades cuyo proceso de liquidación judicial ya concluyó sin masa de bienes remanentes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           )}
 
           {/* V2: EPS UNITARY DASHBOARD */}

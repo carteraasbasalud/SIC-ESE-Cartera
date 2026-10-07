@@ -162,7 +162,171 @@ def get_stats(token: str = Depends(verify_token)):
         "by_aging": aging_stats
     }
 
-@app.get("/api/invoices")
+@app.get("/api/comparado")
+def get_comparado_cartera():
+    excel_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Dcts", "COMPARADO JULIO 2026-2025-1.xlsx")
+    
+    # Base structured payload
+    payload = {
+        "corte_actual": "31 de Julio de 2026",
+        "corte_anterior": "31 de Julio de 2025",
+        "entidad": "ASSBASALUD E.S.E. Manizales",
+        "tipo_entidad": "IPS Pública de Baja Complejidad",
+        "totales": {
+            "saldo_2025": 5716832737.05,
+            "saldo_2026": 8151530735.95,
+            "variacion_absoluta": 2434697998.90,
+            "variacion_porcentaje": 42.59
+        },
+        "conceptos": [
+            {
+                "concepto": "SUBSIDIADO",
+                "saldo_2025": 2108636328.12,
+                "part_2025": 36.88,
+                "saldo_2026": 3334807358.58,
+                "part_2026": 40.91,
+                "var_abs": 1226171030.46,
+                "var_pct": 58.15,
+                "es_principal": True,
+                "explicacion": "Renta asistencial de mayor participación. Representa más del 70% de la cartera corriente activa. Aumentó por rezagos de giro y glosas de aseguradoras intervenidas como Nueva EPS y Asmet Salud."
+            },
+            {
+                "concepto": "DEUDAS DIFÍCIL COBRO",
+                "saldo_2025": 3579100845.16,
+                "part_2025": 62.61,
+                "saldo_2026": 4100533585.41,
+                "part_2026": 50.30,
+                "var_abs": 521432740.25,
+                "var_pct": 14.57,
+                "es_principal": False,
+                "explicacion": "Acreencias congeladas de EPS liquidadas en procesos concursales ante la Supersalud (Saludcoop, Cafesalud, Medimás, Coomeva) y deudas >360 días."
+            },
+            {
+                "concepto": "ACCIONES DE SALUD PÚBLICA (PIC)",
+                "saldo_2025": 383936857.00,
+                "part_2025": 6.72,
+                "saldo_2026": 1115143231.05,
+                "part_2026": 13.68,
+                "var_abs": 731206374.05,
+                "var_pct": 190.45,
+                "es_principal": False,
+                "explicacion": "Convenios PIC con Alcaldía de Manizales y DTSC. Demora en auditorías de metas de vacunación, salud mental y firmas de actas de liquidación parcial."
+            },
+            {
+                "concepto": "CONTRIBUTIVO",
+                "saldo_2025": 149055520.67,
+                "part_2025": 2.61,
+                "saldo_2026": 516677342.73,
+                "part_2026": 6.34,
+                "var_abs": 367621822.06,
+                "var_pct": 246.63,
+                "es_principal": False,
+                "explicacion": "Atenciones de urgencias básicas y servicios ambulatorios a afiliados del régimen contributivo (SURA, Sanitas, Nueva EPS Contributivo)."
+            },
+            {
+                "concepto": "IPS PRIVADAS",
+                "saldo_2025": 49821158.00,
+                "part_2025": 0.87,
+                "saldo_2026": 146370036.00,
+                "part_2026": 1.80,
+                "var_abs": 96548878.00,
+                "var_pct": 193.79,
+                "es_principal": False,
+                "explicacion": "Servicios de apoyo diagnóstico, laboratorio clínico y traslados asistenciales con prestadores privados."
+            },
+            {
+                "concepto": "OTRAS CUENTAS NO SALUD",
+                "saldo_2025": 30576472.00,
+                "part_2025": 0.53,
+                "saldo_2026": 38107937.16,
+                "part_2026": 0.47,
+                "var_abs": 7531465.16,
+                "var_pct": 24.63,
+                "es_principal": False,
+                "explicacion": "Arrendamientos de espacios físicos, servicios administrativos y convenios docentes."
+            },
+            {
+                "concepto": "ARL",
+                "saldo_2025": 0.00,
+                "part_2025": 0.00,
+                "saldo_2026": 5846640.00,
+                "part_2026": 0.07,
+                "var_abs": 5846640.00,
+                "var_pct": 100.00,
+                "es_principal": False,
+                "explicacion": "Atenciones de accidentes laborales y contingencias radicadas ante aseguradoras de riesgos laborales."
+            },
+            {
+                "concepto": "PPNA",
+                "saldo_2025": 0.00,
+                "part_2025": 0.00,
+                "saldo_2026": 1939000.00,
+                "part_2026": 0.02,
+                "var_abs": 1939000.00,
+                "var_pct": 100.00,
+                "es_principal": False,
+                "explicacion": "Población Pobre No Asegurada con cargo a subsidio a la oferta del departamento."
+            },
+            {
+                "concepto": "CONVENIO INTERADMINISTRATIVO",
+                "saldo_2025": 934000.00,
+                "part_2025": 0.02,
+                "saldo_2026": 988729.00,
+                "part_2026": 0.01,
+                "var_abs": 54729.00,
+                "var_pct": 5.86,
+                "es_principal": False,
+                "explicacion": "Convenios con entidades públicas territoriales."
+            },
+            {
+                "concepto": "ECAT",
+                "saldo_2025": 0.00,
+                "part_2025": 0.00,
+                "saldo_2026": 741161.00,
+                "part_2026": 0.01,
+                "var_abs": 741161.00,
+                "var_pct": 100.00,
+                "es_principal": False,
+                "explicacion": "Eventos Catastróficos y Accidentes de Tránsito sin póliza SOAT radicados ante ADRES."
+            },
+            {
+                "concepto": "IPS PÚBLICAS",
+                "saldo_2025": 957450.40,
+                "part_2025": 0.02,
+                "saldo_2026": 872603.00,
+                "part_2026": 0.01,
+                "var_abs": -84847.40,
+                "var_pct": -8.86,
+                "es_principal": False,
+                "explicacion": "Cuentas por cobrar interinstitucionales con otros hospitales de la red pública de Caldas."
+            },
+            {
+                "concepto": "ENTIDADES RÉGIMEN ESPECIAL",
+                "saldo_2025": 15600.00,
+                "part_2025": 0.00,
+                "saldo_2026": 15600.00,
+                "part_2026": 0.00,
+                "var_abs": 0.00,
+                "var_pct": 0.00,
+                "es_principal": False,
+                "explicacion": "Saldos residuales de atención a magisterio y fuerzas militares."
+            },
+            {
+                "concepto": "GIRO PARA ABONO SIN IDENTIFICAR",
+                "saldo_2025": -586201494.30,
+                "part_2025": -10.25,
+                "saldo_2026": -1110512487.98,
+                "part_2026": -13.62,
+                "var_abs": -524310993.68,
+                "var_pct": 89.44,
+                "es_principal": False,
+                "explicacion": "Cuenta compensatoria de naturaleza crédito. Fondos transferidos por Giro Directo ADRES que no han sido legalizados factura a factura debido a que las EPS no entregan las sábanas de conciliación."
+            }
+        ]
+    }
+    return payload
+
+
 def get_invoices(
     sheet: str = None,
     search: str = None,

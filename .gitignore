@@ -23,5 +23,6 @@ config.json
 *.zip
 .tempmediaStorage/
 .DS_Store
-Thumbs.db
-
+# Database backups
+*.bak
+backend/cartera_bak.db
