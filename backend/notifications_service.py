@@ -78,25 +78,26 @@ def send_email_via_brevo(api_key, sender_email, to_email, subject, plain_body, h
         raise RuntimeError(f"Error Brevo API: {str(e)}")
 
 def send_email_smtp(server, port, user, password, use_ssl, to_email, subject, plain_body, html_body=None):
-    msg = MIMEMultipart("alternative")
-    msg['From'] = f"ASBASALUD E.S.E. Cartera <{user}>"
+    from email.message import EmailMessage
+    msg = EmailMessage()
+    msg['From'] = user
     msg['To'] = to_email
     msg['Subject'] = subject
 
-    msg.attach(MIMEText(plain_body, 'plain', 'utf-8'))
+    msg.set_content(plain_body)
     if html_body:
-        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+        msg.add_alternative(html_body, subtype="html")
 
     context = ssl.create_default_context()
     if use_ssl or port == 465:
         with smtplib.SMTP_SSL(server, port, context=context, timeout=15) as smtp:
             smtp.login(user, password)
-            smtp.sendmail(user, [to_email], msg.as_string())
+            smtp.send_message(msg)
     else:
         with smtplib.SMTP(server, port, timeout=15) as smtp:
             smtp.starttls(context=context)
             smtp.login(user, password)
-            smtp.sendmail(user, [to_email], msg.as_string())
+            smtp.send_message(msg)
     return True
 
 def send_notification_email(to_email, subject, plain_body, html_body=None):
