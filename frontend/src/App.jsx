@@ -212,7 +212,7 @@ const DEFAULT_COMPARADO_DATA = {
 export default function App() {
   const [activePage, setActivePage] = useState('dashboard');
   const [theme, setTheme] = useState('dark');
-  const [currentUser, setCurrentUser] = useState('Jefe de Cartera');
+  const [currentUser, setCurrentUser] = useState('HECTOR FABIO RAMIREZ');
   const [stats, setStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -1009,7 +1009,7 @@ export default function App() {
             onClick={() => setActivePage('dashboard')}
           >
             <LayoutDashboard size={18} />
-            <span>Dashboard Overview</span>
+            <span>Panel Principal</span>
           </li>
           <li 
             className={`menu-item ${activePage === 'comparativo' ? 'active' : ''}`}
@@ -1044,7 +1044,7 @@ export default function App() {
             onClick={() => setActivePage('mail')}
           >
             <Mail size={18} />
-            <span>Mail Center</span>
+            <span>Centro de Correo</span>
           </li>
           <li 
             className={`menu-item ${activePage === 'notificaciones' ? 'active' : ''}`}
@@ -1064,12 +1064,12 @@ export default function App() {
 
         <div className="sidebar-footer">
           <div className="user-profile-row">
-            <div className="user-avatar">
-              {currentUser.split(' ').map(n => n[0]).join('')}
+            <div className="user-avatar" style={{ backgroundColor: '#1d4ed8', color: '#ffffff', fontWeight: 'bold' }}>
+              HR
             </div>
             <div className="user-info">
-              <h4>{currentUser}</h4>
-              <p>Jefe de Cartera (ASBASALUD)</p>
+              <h4 style={{ fontSize: '13px', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>HECTOR FABIO RAMIREZ</h4>
+              <p style={{ fontSize: '11px', margin: '2px 0 0 0', color: 'var(--text-secondary)' }}>Profesional Universitario Cartera</p>
             </div>
           </div>
           <button className="logout-btn" onClick={handleLogout}>
@@ -1089,7 +1089,7 @@ export default function App() {
               {activePage === 'invoices' && 'Explorador General de Facturas'}
               {activePage === 'alerts' && 'Semáforo Legal y Consola de Alertas'}
               {activePage === 'forecast' && 'Previsión de Flujo de Caja (Forecasting)'}
-              {activePage === 'mail' && 'Mail Center (Compromisos Automáticos)'}
+              {activePage === 'mail' && 'Centro de Correo (Compromisos Automáticos)'}
               {activePage === 'notificaciones' && 'Cobro Masivo y Notificaciones Legales (Ley 527/1999)'}
               {activePage === 'settings' && 'Ajustes y Carga de Archivos Excel'}
               {activePage === 'eps-detail' && 'Dashboard Unitario por EPS'}
@@ -1112,6 +1112,7 @@ export default function App() {
                 value={currentUser} 
                 onChange={(e) => setCurrentUser(e.target.value)}
               >
+                <option value="HECTOR FABIO RAMIREZ">HECTOR FABIO RAMIREZ (Prof. Univ. Cartera)</option>
                 <option value="Jefe de Cartera">Jefe de Cartera (S. Partner)</option>
                 <option value="Analista 1">Analista de Cartera 1</option>
                 <option value="Analista 2">Analista de Cartera 2</option>
@@ -1214,7 +1215,7 @@ export default function App() {
                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: '500' }}
                                 onClick={() => fetchEpsDetail(d.nit)}
                               >
-                                {d.entidad.substring(0, 18)}
+                                {(d.entidad || 'Entidad').substring(0, 18)}
                               </span>
                               <strong>{formatCurrency(d.saldo)}</strong>
                             </div>
@@ -1234,7 +1235,7 @@ export default function App() {
                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: '500' }}
                                 onClick={() => fetchEpsDetail(v.nit)}
                               >
-                                {v.entidad.substring(0, 18)}
+                                {(v.entidad || 'Entidad').substring(0, 18)}
                               </span>
                               <strong>{v.count} Facturas</strong>
                             </div>
@@ -1254,9 +1255,9 @@ export default function App() {
                                 style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: '500' }}
                                 onClick={() => fetchEpsDetail(g.nit)}
                               >
-                                {g.entidad.substring(0, 18)}
+                                {(g.entidad || 'Entidad').substring(0, 18)}
                               </span>
-                              <strong style={{ color: 'var(--accent-gold)' }}>{g.tasa_glosa.toFixed(1)}% Glosa</strong>
+                              <strong style={{ color: 'var(--accent-gold)' }}>{(g.tasa_glosa || 0).toFixed(1)}% Glosa</strong>
                             </div>
                           ))}
                         </div>
@@ -1994,7 +1995,7 @@ export default function App() {
                               </td>
                               <td>
                                 <span className={`badge ${getBadgeClass(inv.categoria)}`}>
-                                  {inv.categoria.substring(0, 18)}
+                                  {(inv.categoria || 'SIN CATEGORÍA').substring(0, 18)}
                                 </span>
                               </td>
                               <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{inv.total_cobros || 0}</td>

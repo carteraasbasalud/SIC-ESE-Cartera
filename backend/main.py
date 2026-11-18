@@ -794,8 +794,8 @@ def get_coercitivo_data(nit: str, token: str = Depends(verify_token)):
         "nit_remitente": "890.802.233-1",
         "ciudad": "Manizales, Caldas",
         "referencia": "OFICIO DE REQUERIMIENTO FORMAL Y COBRO COERCITIVO - LEY 1438 DE 2011",
-        "firmante": "Jefe de Cartera / Subgerente Financiero",
-        "cargo_firmante": "Jefe del Área de Cartera de Alto Nivel"
+        "firmante": "HECTOR FABIO RAMIREZ",
+        "cargo_firmante": "Profesional Universitario Cartera"
     }
 
 @app.get("/api/settings/smtp")

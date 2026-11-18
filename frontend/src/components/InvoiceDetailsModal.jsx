@@ -86,7 +86,9 @@ Recordamos que de acuerdo con el marco legal colombiano vigente para las Empresa
 Agradecemos su pronta gestión de pago a nuestras cuentas maestras autorizadas.
 
 Cordialmente,
-Jefe de Cartera
+HECTOR FABIO RAMIREZ
+PROFESIONAL UNIVERSITARIO CARTERA
+Área de Cartera y Cobro Persuasivo
 ASBASALUD E.S.E. Manizales
 contacto@asbasalud.gov.co`;
     } else if (templateType === 'persuasivo') {
@@ -106,7 +108,9 @@ A la fecha, el saldo presenta un retraso de ${inv.nodias} días. Les solicitamos
 Para aclaraciones o conciliaciones de glosas, pueden responder a este correo.
 
 Atentamente,
-Jefe de Cartera
+HECTOR FABIO RAMIREZ
+PROFESIONAL UNIVERSITARIO CARTERA
+Área de Cartera y Cobro Persuasivo
 ASBASALUD E.S.E. Manizales`;
     } else if (templateType === 'cuota_parte') {
       subject = `Cobro de Cuota Parte Pensional - Factura/Radicado: ${inv.consecutiv} - ASBASALUD E.S.E.`;
@@ -127,7 +131,9 @@ Información del cobro:
 Este cobro se realiza bajo las normas que regulan los pasivos pensionales concurrentes entre entidades públicas colombianas. Solicitamos el inicio de trámite presupuestal de pago o hacernos saber la agenda de conciliación de saldos pensionales.
 
 Atentamente,
-Jefe de Cartera
+HECTOR FABIO RAMIREZ
+PROFESIONAL UNIVERSITARIO CARTERA
+Área de Cartera y Cobro Persuasivo
 ASBASALUD E.S.E. Manizales`;
     }
 

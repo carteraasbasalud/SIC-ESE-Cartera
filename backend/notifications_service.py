@@ -425,6 +425,8 @@ def build_debt_email(entity):
 
                 <!-- Despedida -->
                 <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
+                    <p style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; color: #0f172a;">HECTOR FABIO RAMIREZ</p>
+                    <p style="font-size: 12px; font-weight: 600; margin: 0 0 10px 0; color: #475569;">PROFESIONAL UNIVERSITARIO CARTERA</p>
                     <p style="font-size: 13px; font-weight: bold; margin: 0; color: #0f172a;">Área de Cartera y Cobro Persuasivo</p>
                     <p style="font-size: 12px; margin: 2px 0; color: #64748b;">ASSBASALUD E.S.E. Manizales</p>
                     <p style="font-size: 11px; margin: 0; color: #94a3b8;">Sistema Inteligente de Cartera SIC-ESE | Correo: carteraassbasalud@gmail.com</p>
@@ -460,7 +462,11 @@ Distribución de Edades:
 Agradecemos remitir soportes de pago o programar mesa de conciliación al correo carteraassbasalud@gmail.com dentro de los términos de ley.
 
 Atentamente,
+
+HECTOR FABIO RAMIREZ
+PROFESIONAL UNIVERSITARIO CARTERA
 Área de Cartera y Cobro Persuasivo
 ASSBASALUD E.S.E. Manizales
+Sistema Inteligente de Cartera SIC-ESE | Correo: carteraassbasalud@gmail.com
 """
     return subject, plain_content, html_content
