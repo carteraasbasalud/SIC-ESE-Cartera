@@ -79,6 +79,14 @@ class SmtpConfig(BaseModel):
 class SmtpTestRequest(BaseModel):
     destinatario: str
 
+class NotificationTestRequest(BaseModel):
+    destinatario: str = "safarialzate@gmail.com"
+    nit: str = None
+
+class NotificationBatchRequest(BaseModel):
+    nits: list[str]
+
+
 
 # Helper to execute queries
 def execute_query(query, params=(), fetchone=False, fetchall=False):
@@ -562,55 +570,13 @@ def send_email_via_brevo(api_key, sender_email, to_email, subject, body):
             raise RuntimeError(f"Error Brevo API: {err_details}")
         raise RuntimeError(f"Error Brevo API: {str(e)}")
 
-def send_email_unified(to_email, subject, body):
-    if not os.path.exists(SMTP_CONFIG_PATH):
-        print("Config file not found. Skipping real email (Simulation Mode).")
-        return False
-        
-    with open(SMTP_CONFIG_PATH, "r") as f:
-        config = json.load(f)
-        
-    provider = config.get("provider", "smtp")
-    
-    if provider == "brevo":
-        api_key = config.get("brevo_api_key")
-        sender = config.get("smtp_user")
-        if not api_key or not sender:
-            print("Brevo config incomplete. Skipping real email (Simulation Mode).")
-            return False
-        return send_email_via_brevo(api_key, sender, to_email, subject, body)
-        
-    server = config.get("smtp_server", "smtp.gmail.com")
-    port = int(config.get("smtp_port", 465))
-    user = config.get("smtp_user")
-    password = config.get("smtp_password")
-    use_ssl = config.get("use_ssl", True)
-    
-    if not user or not password:
-        print("SMTP credentials incomplete. Skipping real email (Simulation Mode).")
-        return False
-        
-    msg = MIMEMultipart()
-    msg['From'] = user
-    msg['To'] = to_email
-    msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain', 'utf-8'))
-    
+def send_email_unified(to_email, subject, body, html_body=None):
     try:
-        if use_ssl:
-            with smtplib.SMTP_SSL(server, port, timeout=10) as smtp:
-                smtp.login(user, password)
-                smtp.sendmail(user, to_email, msg.as_string())
-        else:
-            with smtplib.SMTP(server, port, timeout=10) as smtp:
-                smtp.starttls()
-                smtp.login(user, password)
-                smtp.sendmail(user, to_email, msg.as_string())
-        print(f"SMTP Email successfully sent to {to_email}")
-        return True
+        from notifications_service import send_notification_email
+        return send_notification_email(to_email, subject, body, html_body)
     except Exception as e:
-        print(f"SMTP error sending to {to_email}: {e}")
-        raise RuntimeError(f"Error SMTP: {str(e)}")
+        print(f"send_email_unified error: {e}")
+        raise RuntimeError(f"Error al enviar correo: {str(e)}")
 
 @app.post("/api/reminders/{reminder_id}/send")
 def send_reminder(reminder_id: int, token: str = Depends(verify_token)):
@@ -909,6 +875,153 @@ Servidor de Cartera SIC-ESE"""
         return {"status": "success", "message": f"Correo de prueba enviado con éxito a {test_req.destinatario}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# NOTIFICACIONES MASIVAS Y COBRO ELECTRÓNICO (LEY 527/1999)
+# ==========================================
+
+@app.get("/api/notifications/data")
+def get_notifications_data(token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, get_email_credentials
+    data = get_septiembre_dataset()
+    creds = get_email_credentials()
+    return {
+        "resumen": data.get("resumen", {}),
+        "entidades": data.get("entidades", []),
+        "smtp_info": {
+            "sender": creds.get("smtp_user"),
+            "provider": creds.get("provider"),
+            "ready": bool(creds.get("smtp_user") and creds.get("smtp_password"))
+        },
+        "legal_text": "SE REMITE ESTE E-MAIL EN VIRTUD DE LA LEY 527 DEL 18 DE AGOSTO DE 1999 Y LA LEY 962 DEL 8 DE JULIO DE 2005, LAS CUALES ESTABLECEN QUE LA INFORMACIÓN TRAMITADA POR ESTE MEDIO TIENE TOTAL VALIDEZ Y ES OBJETO DE PLENA PRUEBA. Y LA LEY 1437 DE 2011 ARTICULO 53 UTILIZACION DE MEDIOS ELECTRONICOS EN EL PROCEDIMIENTO ADMINISTRATIVO"
+    }
+
+@app.post("/api/notifications/upload")
+def upload_notifications_excel(file: UploadFile = File(...), token: str = Depends(verify_token)):
+    from notifications_service import parse_debt_excel
+    import shutil
+    
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Dcts")
+    os.makedirs(upload_dir, exist_ok=True)
+    temp_path = os.path.join(upload_dir, f"UPLOADED_{file.filename}")
+    
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    try:
+        parsed = parse_debt_excel(temp_path)
+        return {
+            "status": "success",
+            "message": f"Archivo '{file.filename}' procesado con éxito",
+            "resumen": parsed.get("resumen", {}),
+            "entidades": parsed.get("entidades", [])
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar el archivo Excel: {str(e)}")
+
+@app.get("/api/notifications/preview/{nit}")
+def preview_notification(nit: str, token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, build_debt_email
+    data = get_septiembre_dataset()
+    entity = next((e for e in data.get("entidades", []) if str(e.get("nit")) == str(nit)), None)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entidad no encontrada para este NIT")
+    sub, plain, html = build_debt_email(entity)
+    return {
+        "nit": entity["nit"],
+        "cliente": entity["cliente"],
+        "correo": entity["correo"],
+        "subject": sub,
+        "plain": plain,
+        "html": html
+    }
+
+@app.post("/api/notifications/test")
+def test_notification(test_req: NotificationTestRequest, token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, build_debt_email, send_notification_email
+    data = get_septiembre_dataset()
+    if test_req.nit:
+        entity = next((e for e in data.get("entidades", []) if str(e.get("nit")) == str(test_req.nit)), None)
+    else:
+        entities = data.get("entidades", [])
+        entity = entities[2] if len(entities) > 2 else (entities[0] if entities else None)
+        
+    if not entity:
+        raise HTTPException(status_code=404, detail="No hay entidades disponibles para la prueba")
+        
+    sub, plain, html = build_debt_email(entity)
+    test_sub = f"[PRUEBA FORMATO] {sub}"
+    
+    try:
+        send_notification_email(test_req.destinatario, test_sub, plain, html)
+        return {
+            "status": "success", 
+            "message": f"Correo de prueba institucional enviado con éxito a {test_req.destinatario} con los datos de {entity['cliente']} y el marco legal completo."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al enviar correo de prueba: {str(e)}")
+
+@app.post("/api/notifications/send-selected")
+def send_selected_notifications(batch_req: NotificationBatchRequest, token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, build_debt_email, send_notification_email
+    data = get_septiembre_dataset()
+    nits_set = set(batch_req.nits)
+    selected_entities = [e for e in data.get("entidades", []) if str(e.get("nit")) in nits_set]
+    
+    if not selected_entities:
+        raise HTTPException(status_code=400, detail="No se seleccionó ninguna entidad válida")
+        
+    results = []
+    now_str = datetime.datetime.now().isoformat()
+    
+    for ent in selected_entities:
+        email = ent.get("correo")
+        if not email or "@" not in email:
+            results.append({
+                "nit": ent["nit"],
+                "cliente": ent["cliente"],
+                "correo": email,
+                "status": "error",
+                "detail": "Sin correo electrónico válido registrado"
+            })
+            continue
+            
+        clean_email = email.split(',')[-1].strip()
+        if '<' in clean_email and '>' in clean_email:
+            clean_email = clean_email.split('<')[1].split('>')[0].strip()
+            
+        sub, plain, html = build_debt_email(ent)
+        try:
+            send_notification_email(clean_email, sub, plain, html)
+            log_text = f"Oficio Requerimiento Ley 527/1999 enviado a {clean_email}. Saldo: ${ent['total_saldo']:,.2f} ({ent['total_facturas']} facturas)"
+            execute_query(
+                "INSERT INTO collection_history (invoice_id, fecha_gestion, tipo_gestion, descripcion, usuario) VALUES (NULL, ?, 'Correo Masivo', ?, 'Sistema SIC-ESE');",
+                (now_str, log_text)
+            )
+            results.append({
+                "nit": ent["nit"],
+                "cliente": ent["cliente"],
+                "correo": clean_email,
+                "status": "enviado",
+                "detail": "Notificación enviada satisfactoriamente"
+            })
+        except Exception as e:
+            results.append({
+                "nit": ent["nit"],
+                "cliente": ent["cliente"],
+                "correo": clean_email,
+                "status": "error",
+                "detail": str(e)
+            })
+            
+    return {
+        "status": "completed",
+        "total_procesados": len(selected_entities),
+        "exitosos": sum(1 for r in results if r["status"] == "enviado"),
+        "fallidos": sum(1 for r in results if r["status"] == "error"),
+        "detalles": results
+    }
+
 
 # ==========================================
 # SERVIR FRONTEND ESTATICO EN PRODUCCION

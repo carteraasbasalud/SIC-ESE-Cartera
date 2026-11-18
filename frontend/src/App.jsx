@@ -29,7 +29,12 @@ import {
   BarChart3,
   ArrowUpRight,
   ArrowDownRight,
-  Info
+  Info,
+  Send,
+  CheckSquare,
+  Square,
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import InvoiceDetailsModal from './components/InvoiceDetailsModal';
 
@@ -277,6 +282,23 @@ export default function App() {
   const [smtpTesting, setSmtpTesting] = useState(false);
   const [smtpTestMessage, setSmtpTestMessage] = useState('');
 
+  // Notifications & Mass Mailing State (Ley 527/1999)
+  const [notifData, setNotifData] = useState({ resumen: {}, entidades: [], smtp_info: {}, legal_text: '' });
+  const [loadingNotif, setLoadingNotif] = useState(false);
+  const [selectedNits, setSelectedNits] = useState([]);
+  const [notifSearch, setNotifSearch] = useState('');
+  const [testEmailRecipient, setTestEmailRecipient] = useState('safarialzate@gmail.com');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [sendingBatch, setSendingBatch] = useState(false);
+  const [batchResults, setBatchResults] = useState(null);
+  const [previewModalEntity, setPreviewModalEntity] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewContent, setPreviewContent] = useState(null);
+  const [notifUploadFile, setNotifUploadFile] = useState(null);
+  const [notifUploading, setNotifUploading] = useState(false);
+  const [notifUploadMsg, setNotifUploadMsg] = useState('');
+
   const API_URL = window.location.origin === 'http://localhost:5173' 
     ? 'http://localhost:8000/api' 
     : `${window.location.origin}/api`;
@@ -359,8 +381,183 @@ export default function App() {
       fetchReminders();
       fetchSmtpSettings();
       fetchComparado();
+      fetchNotifData();
     }
   }, [token]);
+
+  const fetchNotifData = async () => {
+    try {
+      setLoadingNotif(true);
+      const res = await authenticatedFetch(`${API_URL}/notifications/data`);
+      if (res.ok) {
+        const data = await res.json();
+        setNotifData(data);
+        const validNits = (data.entidades || []).filter(e => e.correo && e.correo.includes('@')).map(e => e.nit);
+        setSelectedNits(validNits);
+      }
+    } catch (err) {
+      console.error("Error fetching notifications data:", err);
+    } finally {
+      setLoadingNotif(false);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    if (!testEmailRecipient) return;
+    try {
+      setSendingTest(true);
+      setTestResult(null);
+      const res = await authenticatedFetch(`${API_URL}/notifications/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destinatario: testEmailRecipient })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestResult({ success: true, message: data.message });
+      } else {
+        setTestResult({ success: false, message: data.detail || 'Error al enviar prueba' });
+      }
+    } catch (err) {
+      setTestResult({ success: false, message: err.message });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const handleSendBatchNotifications = async () => {
+    if (selectedNits.length === 0) {
+      alert("Por favor selecciona al menos una entidad para enviar la notificación.");
+      return;
+    }
+    const confirmMsg = `¿Está seguro de enviar los requerimientos de cobro formales a ${selectedNits.length} entidades seleccionadas bajo el marco de la Ley 527 de 1999?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setSendingBatch(true);
+      setBatchResults(null);
+      const res = await authenticatedFetch(`${API_URL}/notifications/send-selected`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nits: selectedNits })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setBatchResults(data);
+        alert(`Proceso completado. Notificaciones exitosas: ${data.exitosos}, Fallidas: ${data.fallidos}`);
+      } else {
+        alert(data.detail || "Error en el envío de requerimientos");
+      }
+    } catch (err) {
+      alert("Error en el envío: " + err.message);
+    } finally {
+      setSendingBatch(false);
+    }
+  };
+
+  const handlePreviewEntity = async (entity) => {
+    setPreviewModalEntity(entity);
+    setPreviewLoading(true);
+    setPreviewContent(null);
+    try {
+      const res = await authenticatedFetch(`${API_URL}/notifications/preview/${entity.nit}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewContent(data);
+      }
+    } catch (err) {
+      console.error("Error previewing notification:", err);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleUploadNotifExcel = async (e) => {
+    e.preventDefault();
+    if (!notifUploadFile) return;
+    try {
+      setNotifUploading(true);
+      setNotifUploadMsg('');
+      const formData = new FormData();
+      formData.append('file', notifUploadFile);
+      const res = await authenticatedFetch(`${API_URL}/notifications/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotifUploadMsg(`¡Éxito! ${data.message}. Se cargaron ${data.entidades.length} entidades.`);
+        setNotifData(prev => ({
+          ...prev,
+          resumen: data.resumen,
+          entidades: data.entidades
+        }));
+        setSelectedNits(data.entidades.filter(ent => ent.correo && ent.correo.includes('@')).map(ent => ent.nit));
+      } else {
+        setNotifUploadMsg(`Error: ${data.detail || 'Fallo en la carga'}`);
+      }
+    } catch (err) {
+      setNotifUploadMsg(`Error al subir archivo: ${err.message}`);
+    } finally {
+      setNotifUploading(false);
+    }
+  };
+
+  const filteredEntities = (notifData.entidades || []).filter(e => {
+    if (!notifSearch) return true;
+    const term = notifSearch.toLowerCase();
+    return (
+      (e.cliente && e.cliente.toLowerCase().includes(term)) ||
+      (e.nit && String(e.nit).toLowerCase().includes(term)) ||
+      (e.correo && e.correo.toLowerCase().includes(term))
+    );
+  });
+
+  const handleToggleSelectAll = () => {
+    const validCurrent = filteredEntities.filter(e => e.correo && e.correo.includes('@')).map(e => e.nit);
+    if (selectedNits.length === validCurrent.length) {
+      setSelectedNits([]);
+    } else {
+      setSelectedNits(validCurrent);
+    }
+  };
+
+  const handleToggleSelectOne = (nit) => {
+    if (selectedNits.includes(nit)) {
+      setSelectedNits(selectedNits.filter(n => n !== nit));
+    } else {
+      setSelectedNits([...selectedNits, nit]);
+    }
+  };
+
+  const handleSendSingleEntity = async (nit) => {
+    const ent = notifData.entidades.find(e => e.nit === nit);
+    if (!ent) return;
+    if (!window.confirm(`¿Enviar requerimiento oficial a ${ent.cliente} (${ent.correo})?`)) return;
+    try {
+      setSendingBatch(true);
+      const res = await authenticatedFetch(`${API_URL}/notifications/send-selected`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nits: [nit] })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.exitosos > 0 ? "¡Requerimiento enviado con éxito!" : "Error al enviar: " + (data.detalles[0]?.detail || ''));
+        setBatchResults(prev => {
+          const oldList = prev?.detalles || [];
+          const updated = [...oldList.filter(d => d.nit !== nit), ...(data.detalles || [])];
+          return { ...prev, detalles: updated };
+        });
+      } else {
+        alert(data.detail || "Error en el envío");
+      }
+    } catch (err) {
+      alert("Error: " + err.message);
+    } finally {
+      setSendingBatch(false);
+    }
+  };
 
   const fetchSmtpSettings = async () => {
     try {
@@ -850,6 +1047,13 @@ export default function App() {
             <span>Mail Center</span>
           </li>
           <li 
+            className={`menu-item ${activePage === 'notificaciones' ? 'active' : ''}`}
+            onClick={() => setActivePage('notificaciones')}
+          >
+            <Send size={18} />
+            <span>Cobro Masivo (Ley 527)</span>
+          </li>
+          <li 
             className={`menu-item ${activePage === 'settings' ? 'active' : ''}`}
             onClick={() => { setActivePage('settings'); setUploadMessage(''); }}
           >
@@ -886,13 +1090,16 @@ export default function App() {
               {activePage === 'alerts' && 'Semáforo Legal y Consola de Alertas'}
               {activePage === 'forecast' && 'Previsión de Flujo de Caja (Forecasting)'}
               {activePage === 'mail' && 'Mail Center (Compromisos Automáticos)'}
+              {activePage === 'notificaciones' && 'Cobro Masivo y Notificaciones Legales (Ley 527/1999)'}
               {activePage === 'settings' && 'Ajustes y Carga de Archivos Excel'}
               {activePage === 'eps-detail' && 'Dashboard Unitario por EPS'}
             </h2>
             <p>
-              {activePage === 'comparativo' 
-                ? 'Análisis de Variaciones por Concepto, Crisis del Sector Salud y Dependencia del Régimen Subsidiado' 
-                : 'Cartera Corte Diciembre 2025 - Manizales E.S.E.'}
+              {activePage === 'notificaciones' 
+                ? 'Emisión y programación masiva de requerimientos de cobro persuasivo con estados de cuenta consolidados (Septiembre 2026)'
+                : (activePage === 'comparativo' 
+                    ? 'Análisis de Variaciones por Concepto, Crisis del Sector Salud y Dependencia del Régimen Subsidiado' 
+                    : 'Cartera Corte Diciembre 2025 - Manizales E.S.E.')}
             </p>
           </div>
           
@@ -2064,6 +2271,340 @@ export default function App() {
             </div>
           )}
 
+          {/* ========================================================= */}
+          {/* PAGE: NOTIFICACIONES MASIVAS Y COBRO ELECTRÓNICO (LEY 527) */}
+          {/* ========================================================= */}
+          {activePage === 'notificaciones' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+              
+              {/* TOP HEADER SUMMARY BAR */}
+              <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', padding: '18px 24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                    <Send size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: 'var(--text-primary)' }}>
+                      Emisión Masiva de Requerimientos de Cobro Persuasivo
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Corte Septiembre 2026 • Estados de Cuenta con Plena Validez Probatoria • {notifData.resumen?.total_entidades || 52} Entidades Deudoras
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={fetchNotifData}
+                    disabled={loadingNotif}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '8px 14px' }}
+                  >
+                    <RefreshCw size={14} className={loadingNotif ? "spin" : ""} />
+                    <span>Actualizar Datos</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTION BAR: UPLOAD EXCEL & TEST SENDING */}
+              <div className="grid-2" style={{ gap: '18px' }}>
+                {/* BOX 1: UPLOAD EXCEL FILE */}
+                <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Upload size={18} color="var(--primary)" />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Cargar Nuevo Archivo de Cartera con Correos</h4>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                    Sube cualquier archivo Excel (.xlsx) con columnas de correo (Col B), NIT, Cliente y Facturas para actualizar el universo notificable.
+                  </p>
+
+                  <form onSubmit={handleUploadNotifExcel} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+                    <input 
+                      type="file" 
+                      accept=".xlsx,.xls"
+                      onChange={(e) => setNotifUploadFile(e.target.files[0])}
+                      style={{ fontSize: '12px', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)' }}
+                    />
+                    <button 
+                      type="submit" 
+                      className="btn-secondary" 
+                      disabled={!notifUploadFile || notifUploading}
+                      style={{ padding: '8px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Upload size={14} />
+                      {notifUploading ? 'Procesando archivo...' : 'Cargar y Procesar Archivo'}
+                    </button>
+                  </form>
+                  {notifUploadMsg && (
+                    <div style={{ fontSize: '11.5px', padding: '8px 12px', borderRadius: '6px', background: notifUploadMsg.includes('Error') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', color: notifUploadMsg.includes('Error') ? 'var(--accent-red)' : 'var(--primary)', border: `1px solid ${notifUploadMsg.includes('Error') ? 'var(--accent-red)' : 'var(--primary)'}` }}>
+                      {notifUploadMsg}
+                    </div>
+                  )}
+                </div>
+
+                {/* BOX 2: TEST SENDING */}
+                <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Mail size={18} color="var(--accent-blue)" />
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Prueba Inmediata de Correo Institucional</h4>
+                    </div>
+                    <span className="badge badge-corriente" style={{ fontSize: '10px' }}>
+                      Canal: {notifData.smtp_info?.sender || 'Verificado'}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                    Envía un requerimiento formal de prueba con el formato oficial, membrete y marco legal completo para certificar la recepción.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <input 
+                      type="email" 
+                      className="form-input" 
+                      value={testEmailRecipient} 
+                      onChange={(e) => setTestEmailRecipient(e.target.value)}
+                      placeholder="correo@destino.com"
+                      style={{ fontSize: '12px', flexGrow: 1 }}
+                    />
+                    <button 
+                      className="btn-primary" 
+                      onClick={handleSendTestNotification}
+                      disabled={sendingTest || !testEmailRecipient}
+                      style={{ padding: '8px 16px', fontSize: '12px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Send size={14} />
+                      {sendingTest ? 'Enviando...' : 'Enviar Prueba'}
+                    </button>
+                  </div>
+                  {testResult && (
+                    <div style={{ fontSize: '11.5px', padding: '8px 12px', borderRadius: '6px', background: testResult.success ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: testResult.success ? 'var(--primary)' : 'var(--accent-red)', border: `1px solid ${testResult.success ? 'var(--primary)' : 'var(--accent-red)'}` }}>
+                      {testResult.message}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* JURIDICAL FRAMEWORK BANNER (LEY 527 DE 1999) */}
+              <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)', borderLeft: '5px solid var(--accent-blue)', borderRadius: '10px', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-blue)', fontWeight: '700', fontSize: '0.95rem' }}>
+                  <Building size={18} />
+                  <span>MARCO JURÍDICO APLICABLE DE VALIDEZ PROBATORIA:</span>
+                </div>
+                <blockquote style={{ margin: '4px 0', fontSize: '12px', fontStyle: 'italic', color: 'var(--text-primary)', lineHeight: '1.6', background: 'rgba(0,0,0,0.15)', padding: '10px 14px', borderRadius: '6px' }}>
+                  "{notifData.legal_text || "SE REMITE ESTE E-MAIL EN VIRTUD DE LA LEY 527 DEL 18 DE AGOSTO DE 1999 Y LA LEY 962 DEL 8 DE JULIO DE 2005, LAS CUALES ESTABLECEN QUE LA INFORMACIÓN TRAMITADA POR ESTE MEDIO TIENE TOTAL VALIDEZ Y ES OBJETO DE PLENA PRUEBA. Y LA LEY 1437 DE 2011 ARTICULO 53 UTILIZACION DE MEDIOS ELECTRONICOS EN EL PROCEDIMIENTO ADMINISTRATIVO"}"
+                </blockquote>
+                <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  Cada notificación emitida incluye el detalle individual de facturas, vencimientos por rangos de edad (&gt;360 días), saldos pendientes e instrucciones de conciliación formal ante la ESE y la Superintendencia Nacional de Salud.
+                </p>
+              </div>
+
+              {/* METRICS SUMMARY CARDS */}
+              <div className="grid-4" style={{ gap: '14px' }}>
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Entidades Deudoras</span>
+                    <Building size={16} color="var(--primary)" />
+                  </div>
+                  <div className="card-value">{notifData.resumen?.total_entidades || 52}</div>
+                  <span className="card-subtitle">Con correos registrados para cobro</span>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Facturas Consolidadas</span>
+                    <FileText size={16} color="var(--accent-blue)" />
+                  </div>
+                  <div className="card-value">{notifData.resumen?.total_facturas?.toLocaleString() || '11,162'}</div>
+                  <span className="card-subtitle">Relación detallada en estados de cuenta</span>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Saldo Total Notificable</span>
+                    <DollarSign size={16} color="var(--accent-red)" />
+                  </div>
+                  <div className="card-value" style={{ color: 'var(--accent-red)', fontSize: '1.4rem' }}>
+                    {formatCurrency(notifData.resumen?.total_saldo || 1916897468.23)}
+                  </div>
+                  <span className="card-subtitle">Corte Oficial: Septiembre 2026</span>
+                </div>
+
+                <div className="card">
+                  <div className="card-header">
+                    <span className="card-title">Selección Actual</span>
+                    <CheckSquare size={16} color="var(--accent-gold)" />
+                  </div>
+                  <div className="card-value" style={{ color: 'var(--accent-gold)' }}>
+                    {selectedNits.length}
+                  </div>
+                  <span className="card-subtitle">De {filteredEntities.length} entidades listadas</span>
+                </div>
+              </div>
+
+              {/* TABLE CONTAINER: ENTITIES LIST */}
+              <div className="table-container">
+                <div className="table-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexGrow: 1, maxWidth: '420px' }}>
+                    <Search size={16} color="var(--text-secondary)" />
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Buscar por NIT, Entidad o Correo..."
+                      value={notifSearch}
+                      onChange={(e) => setNotifSearch(e.target.value)}
+                      style={{ fontSize: '12px', padding: '6px 12px', width: '100%' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button 
+                      className="btn-secondary" 
+                      onClick={handleToggleSelectAll}
+                      style={{ fontSize: '11.5px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      {selectedNits.length === filteredEntities.filter(e => e.correo && e.correo.includes('@')).length ? (
+                        <>
+                          <Square size={14} />
+                          <span>Deseleccionar Todos</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckSquare size={14} />
+                          <span>Seleccionar Todos ({filteredEntities.filter(e => e.correo && e.correo.includes('@')).length})</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button 
+                      className="btn-primary" 
+                      onClick={handleSendBatchNotifications}
+                      disabled={sendingBatch || selectedNits.length === 0}
+                      style={{ fontSize: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Send size={15} />
+                      <span>{sendingBatch ? 'Enviando Requerimientos...' : `Enviar a Seleccionadas (${selectedNits.length})`}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="table-wrapper" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedNits.length > 0 && selectedNits.length === filteredEntities.filter(e => e.correo && e.correo.includes('@')).length}
+                            onChange={handleToggleSelectAll}
+                          />
+                        </th>
+                        <th style={{ width: '45px', textAlign: 'center' }}>#</th>
+                        <th>NIT</th>
+                        <th>Entidad / Deudor</th>
+                        <th>Correo Electrónico Notificable</th>
+                        <th style={{ textAlign: 'center' }}>Facturas</th>
+                        <th style={{ textAlign: 'right' }}>Saldo Total</th>
+                        <th style={{ textAlign: 'right' }}>&gt; 360 Días</th>
+                        <th style={{ textAlign: 'center' }}>Estado</th>
+                        <th style={{ textAlign: 'center' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredEntities.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                            No se encontraron entidades con el filtro aplicado.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredEntities.map((ent) => {
+                          const isSelected = selectedNits.includes(ent.nit);
+                          const hasEmail = ent.correo && ent.correo.includes('@');
+                          const resultLog = batchResults?.detalles?.find(d => String(d.nit) === String(ent.nit));
+
+                          return (
+                            <tr key={ent.nit || ent.orden} style={{ backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.04)' : undefined }}>
+                              <td style={{ textAlign: 'center' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected}
+                                  disabled={!hasEmail}
+                                  onChange={() => handleToggleSelectOne(ent.nit)}
+                                />
+                              </td>
+                              <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+                                {ent.orden}
+                              </td>
+                              <td style={{ fontWeight: '600', fontSize: '12px' }}>
+                                {ent.nit}
+                              </td>
+                              <td style={{ fontWeight: '700', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                {ent.cliente}
+                              </td>
+                              <td>
+                                {hasEmail ? (
+                                  <span style={{ fontSize: '11.5px', color: 'var(--accent-blue)', display: 'inline-block', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ent.correo}>
+                                    {ent.correo}
+                                  </span>
+                                ) : (
+                                  <span className="badge badge-default" style={{ fontSize: '10px' }}>Sin Correo</span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center', fontWeight: '600', fontSize: '12px' }}>
+                                {ent.total_facturas}
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: '700', fontSize: '12.5px', color: 'var(--accent-red)' }}>
+                                {formatCurrency(ent.total_saldo)}
+                              </td>
+                              <td style={{ textAlign: 'right', fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                                {formatCurrency(ent.venci_mas_360)}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {resultLog ? (
+                                  resultLog.status === 'enviado' ? (
+                                    <span className="badge badge-corriente" style={{ fontSize: '10.5px' }}>Enviado</span>
+                                  ) : (
+                                    <span className="badge badge-vencido" style={{ fontSize: '10.5px' }} title={resultLog.detail}>Error</span>
+                                  )
+                                ) : (
+                                  <span className="badge badge-default" style={{ fontSize: '10.5px' }}>Pendiente</span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                  <button 
+                                    className="btn-secondary" 
+                                    title="Ver Vista Previa del Requerimiento Formal"
+                                    onClick={() => handlePreviewEntity(ent)}
+                                    style={{ padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Eye size={13} />
+                                    <span>Vista Previa</span>
+                                  </button>
+                                  <button 
+                                    className="btn-primary" 
+                                    title="Enviar Notificación Oficial Individual"
+                                    disabled={!hasEmail || sendingBatch}
+                                    onClick={() => handleSendSingleEntity(ent.nit)}
+                                    style={{ padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Send size={13} />
+                                    <span>Enviar</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
           {/* PAGE 5: MAIL CENTER */}
           {activePage === 'mail' && (
             <div className="table-container">
@@ -2364,6 +2905,66 @@ export default function App() {
             if (selectedEpsNit) fetchEpsDetail(selectedEpsNit);
           }}
         />
+      )}
+
+      {/* NOTIFICATION PREVIEW MODAL */}
+      {previewModalEntity && (
+        <div className="modal-overlay" onClick={() => setPreviewModalEntity(null)}>
+          <div className="modal-content" style={{ maxWidth: '820px', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '700' }}>
+                  Vista Previa del Requerimiento Oficial de Cobro (Ley 527 de 1999)
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Destinatario: {previewModalEntity.cliente} ({previewModalEntity.correo || 'Sin correo'})
+                </p>
+              </div>
+              <button className="btn-secondary" onClick={() => setPreviewModalEntity(null)} style={{ padding: '4px 10px' }}>
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '16px 0' }}>
+              {previewLoading ? (
+                <div style={{ textAlign: 'center', padding: '60px' }}>
+                  <p>Cargando vista previa institucional...</p>
+                </div>
+              ) : previewContent ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ background: 'var(--bg-tertiary)', padding: '10px 14px', borderRadius: '6px', fontSize: '12px', border: '1px solid var(--border-color)' }}>
+                    <strong>Asunto Oficial:</strong> {previewContent.subject}
+                  </div>
+                  <div 
+                    style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', color: '#1e293b', padding: '10px' }}
+                    dangerouslySetInnerHTML={{ __html: previewContent.html }}
+                  />
+                </div>
+              ) : (
+                <p style={{ color: 'var(--accent-red)' }}>No se pudo cargar la vista previa.</p>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+              <button className="btn-secondary" onClick={() => setPreviewModalEntity(null)}>
+                Cerrar
+              </button>
+              <button 
+                className="btn-primary"
+                disabled={!previewModalEntity.correo || sendingBatch}
+                onClick={() => {
+                  const nit = previewModalEntity.nit;
+                  setPreviewModalEntity(null);
+                  handleSendSingleEntity(nit);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Send size={14} />
+                <span>Enviar Esta Notificación Ahora</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* V2: COERCITIVO printable layout */}
