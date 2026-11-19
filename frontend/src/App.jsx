@@ -276,7 +276,7 @@ export default function App() {
   const [smtpProvider, setSmtpProvider] = useState('smtp'); // 'smtp' or 'brevo'
   const [smtpServer, setSmtpServer] = useState('smtp.gmail.com');
   const [smtpPort, setSmtpPort] = useState(465);
-  const [smtpUser, setSmtpUser] = useState('carteraassbasalud@gmail.com');
+  const [smtpUser, setSmtpUser] = useState('cartera@assbasalud.gov.co');
   const [smtpPassword, setSmtpPassword] = useState('');
   const [smtpUseSsl, setSmtpUseSsl] = useState(true);
   const [brevoApiKey, setBrevoApiKey] = useState('');
@@ -3008,7 +3008,7 @@ export default function App() {
                           className="form-input" 
                           value={smtpUser}
                           onChange={(e) => setSmtpUser(e.target.value)}
-                          placeholder="carteraassbasalud@gmail.com"
+                          placeholder="cartera@assbasalud.gov.co"
                           required 
                         />
                         <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>

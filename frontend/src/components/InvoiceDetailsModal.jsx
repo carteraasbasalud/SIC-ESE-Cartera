@@ -89,10 +89,10 @@ Cordialmente,
 HECTOR FABIO RAMIREZ
 PROFESIONAL UNIVERSITARIO CARTERA
 Área de Cartera y Cobro Persuasivo
-ASBASALUD E.S.E. Manizales
-contacto@asbasalud.gov.co`;
+ASSBASALUD E.S.E. Manizales
+cartera@assbasalud.gov.co | Tel: 3117492571`;
     } else if (templateType === 'persuasivo') {
-      subject = `Cobro Persuasivo de Cartera - Factura: ${inv.consecutiv} - ASBASALUD E.S.E.`;
+      subject = `Cobro Persuasivo de Cartera - Factura: ${inv.consecutiv} - ASSBASALUD E.S.E.`;
       body = `Señores
 Área de Cartera y Glosas
 ${inv.nombre}
@@ -111,7 +111,8 @@ Atentamente,
 HECTOR FABIO RAMIREZ
 PROFESIONAL UNIVERSITARIO CARTERA
 Área de Cartera y Cobro Persuasivo
-ASBASALUD E.S.E. Manizales`;
+ASSBASALUD E.S.E. Manizales
+cartera@assbasalud.gov.co | Tel: 3117492571`;
     } else if (templateType === 'cuota_parte') {
       subject = `Cobro de Cuota Parte Pensional - Factura/Radicado: ${inv.consecutiv} - ASBASALUD E.S.E.`;
       body = `Señores

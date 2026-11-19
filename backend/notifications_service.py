@@ -5,11 +5,21 @@ import smtplib
 import ssl
 import urllib.request
 import datetime
+import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 DEFAULT_SEPT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "SEPTIEMBRE DEUDA Y EDADES 2026.xlsx")
+LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo_assbasalud.png")
+
+_LOGO_B64 = ""
+if os.path.exists(LOGO_PATH):
+    try:
+        with open(LOGO_PATH, "rb") as f:
+            _LOGO_B64 = base64.b64encode(f.read()).decode("utf-8")
+    except Exception as e:
+        print(f"Error loading logo_assbasalud.png: {e}")
 
 def get_email_credentials():
     """
@@ -347,28 +357,11 @@ def build_debt_email(entity):
     <head><meta charset="utf-8"></head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 20px 0; margin: 0;">
         <div style="max-width: 680px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-            <!-- Encabezado Institucional con Emblema y Logos -->
-            <div style="background: linear-gradient(135deg, #0b132b 0%, #1c2541 100%); padding: 26px 20px; text-align: center; color: #ffffff; border-bottom: 4px solid #10b981;">
-                <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; text-align: center;">
-                    <tr>
-                        <td align="center" style="padding-bottom: 10px;">
-                            <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
-                                <tr>
-                                    <td style="width: 46px; height: 46px; background: #10b981; border-radius: 50%; text-align: center; vertical-align: middle; font-size: 26px; color: #ffffff; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-                                        ✚
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="center">
-                            <h2 style="margin: 0 0 4px 0; font-size: 21px; font-weight: 800; letter-spacing: 1px; color: #ffffff; text-transform: uppercase;">ASSBASALUD E.S.E. MANIZALES</h2>
-                            <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">EMPRESA SOCIAL DEL ESTADO • NIT: 890.802.233-1</p>
-                            <p style="margin: 6px 0 0; font-size: 11px; color: #34d399; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Subgerencia Financiera • Área de Cartera y Cobro Persuasivo</p>
-                        </td>
-                    </tr>
-                </table>
+            <!-- Encabezado Institucional con Logo Oficial -->
+            <div style="background-color: #ffffff; padding: 22px 24px 16px 24px; text-align: center; border-bottom: 2px solid #e2e8f0;">
+                {f'<img src="data:image/png;base64,{_LOGO_B64}" alt="ASSBASALUD E.S.E." style="max-height: 70px; width: auto; margin: 0 auto 8px auto; display: block;" />' if _LOGO_B64 else ''}
+                <h2 style="margin: 0 0 4px 0; font-size: 19px; font-weight: 800; letter-spacing: 0.5px; color: #0f172a; text-transform: uppercase;">ASSBASALUD E.S.E. MANIZALES</h2>
+                <p style="margin: 0; font-size: 12.5px; color: #475569; font-weight: 600;">NIT: 890.802.233-1 | Área de Cartera</p>
             </div>
 
             <!-- Banner Legal Obligatorio -->
@@ -384,7 +377,7 @@ def build_debt_email(entity):
                 <p style="font-size: 13px; color: #64748b; margin: 0 0 16px 0;">NIT: {entity['nit']}</p>
 
                 <p style="font-size: 13px; line-height: 1.6; text-align: justify; color: #334155;">
-                    De manera atenta y en ejercicio de las facultades de cobro persuasivo y coactivo otorgadas por la Ley 1438 de 2011, la Ley 1966 de 2019 y la Circular Única de la Superintendencia Nacional de Salud, nos permitimos presentar el requerimiento oficial de cobro y estado de cuenta consolidado correspondiente a las obligaciones asistenciales radicadas ante su entidad, con corte a <strong>septiembre de 2026</strong>.
+                    De manera atenta y en ejercicio de las facultades de cobro persuasivo y coactivo otorgadas por la Ley 1438 de 2011, la Ley 1966 de 2019 y la Circular Única de la Superintendencia Nacional de Salud, me permito presentar el requerimiento oficial de cobro y estado de cuenta consolidado correspondiente a las obligaciones radicadas ante su entidad, con corte a <strong>septiembre de 2026</strong>.
                 </p>
 
                 <!-- Resumen de Saldos -->
@@ -436,18 +429,18 @@ def build_debt_email(entity):
                 </table>
 
                 <!-- Instrucciones de Conciliación -->
-                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 16px; margin: 20px 0; font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+                <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 18px; margin: 20px 0; font-size: 12px; color: #1e3a8a; line-height: 1.6; text-align: justify;">
                     <strong>Instrucciones para Trámite y Conciliación:</strong><br/>
-                    Agradecemos remitir los soportes de pago, órdenes de giro directo (ADRES) o actas de conciliación dentro de los cinco (5) días hábiles siguientes al recibo del presente requerimiento al correo electrónico oficial: <strong>carteraassbasalud@gmail.com</strong>.
+                    Agradezco remitir los soportes de pago, ordenes de giro directo (ADRES), actas de conciliación, glosas, devoluciones, facturas no radicadas, descuentos por indicadores en capitación, recobros y las que afecten la conciliación de la cartera, dentro de los cinco (5) días hábiles siguientes al recibo del presente requerimiento al correo oficial: <strong>cartera@assbasalud.gov.co</strong>.
                 </div>
 
                 <!-- Despedida -->
-                <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 15px;">
-                    <p style="font-size: 13px; font-weight: bold; margin: 0 0 2px 0; color: #0f172a;">HECTOR FABIO RAMIREZ</p>
-                    <p style="font-size: 12px; font-weight: 600; margin: 0 0 10px 0; color: #475569;">PROFESIONAL UNIVERSITARIO CARTERA</p>
+                <div style="margin-top: 30px; border-top: 1px solid #cbd5e1; padding-top: 18px;">
+                    <p style="font-size: 14px; font-weight: bold; margin: 0 0 2px 0; color: #0f172a;">HECTOR FABIO RAMIREZ</p>
+                    <p style="font-size: 12px; font-weight: 700; margin: 0 0 8px 0; color: #0284c7;">PROFESIONAL UNIVERSITARIO CARTERA</p>
                     <p style="font-size: 13px; font-weight: bold; margin: 0; color: #0f172a;">Área de Cartera y Cobro Persuasivo</p>
                     <p style="font-size: 12px; margin: 2px 0; color: #64748b;">ASSBASALUD E.S.E. Manizales</p>
-                    <p style="font-size: 11px; margin: 0; color: #94a3b8;">Sistema Inteligente de Cartera SIC-ESE | Correo: carteraassbasalud@gmail.com</p>
+                    <p style="font-size: 11.5px; margin: 6px 0 0; color: #475569;">Sistema Inteligente de Cartera SIC-ESE | Correo: <strong>cartera@assbasalud.gov.co</strong> | Teléfono: <strong>3117492571</strong></p>
                 </div>
             </div>
         </div>
@@ -456,7 +449,7 @@ def build_debt_email(entity):
     """
 
     plain_content = f"""ASSBASALUD E.S.E. MANIZALES - NIT: 890.802.233-1
-Área de Cartera y Cobro Persuasivo
+Área de Cartera
 
 NOTIFICACIÓN Y COMUNICACIÓN ELECTRÓNICA OFICIAL:
 SE REMITE ESTE E-MAIL EN VIRTUD DE LA LEY 527 DEL 18 DE AGOSTO DE 1999 Y LA LEY 962 DEL 8 DE JULIO DE 2005, LAS CUALES ESTABLECEN QUE LA INFORMACIÓN TRAMITADA POR ESTE MEDIO TIENE TOTAL VALIDEZ Y ES OBJETO DE PLENA PRUEBA. Y LA LEY 1437 DE 2011 ARTICULO 53 UTILIZACION DE MEDIOS ELECTRONICOS EN EL PROCEDIMIENTO ADMINISTRATIVO.
@@ -464,7 +457,7 @@ SE REMITE ESTE E-MAIL EN VIRTUD DE LA LEY 527 DEL 18 DE AGOSTO DE 1999 Y LA LEY 
 Señores: {entity['cliente']}
 NIT: {entity['nit']}
 
-De manera atenta y en ejercicio de las facultades de cobro persuasivo y coactivo otorgadas por la Ley 1438 de 2011, la Ley 1966 de 2019 y la Circular Única de la Superintendencia Nacional de Salud, nos permitimos presentar el requerimiento oficial de cobro y estado de cuenta consolidado con corte a SEPTIEMBRE DE 2026:
+De manera atenta y en ejercicio de las facultades de cobro persuasivo y coactivo otorgadas por la Ley 1438 de 2011, la Ley 1966 de 2019 y la Circular Única de la Superintendencia Nacional de Salud, me permito presentar el requerimiento oficial de cobro y estado de cuenta consolidado correspondiente a las obligaciones radicadas ante su entidad, con corte a SEPTIEMBRE DE 2026:
 
 - Facturas Pendientes: {entity['total_facturas']}
 - Saldo Total Adeudado: ${entity['total_saldo']:,.2f}
@@ -477,7 +470,8 @@ Distribución de Edades:
 - Vencido 181 a 360 días: ${entity['venci_360']:,.2f}
 - Mayor a 360 días: ${entity['venci_mas_360']:,.2f}
 
-Agradecemos remitir soportes de pago o programar mesa de conciliación al correo carteraassbasalud@gmail.com dentro de los términos de ley.
+Instrucciones para Trámite y Conciliación:
+Agradezco remitir los soportes de pago, ordenes de giro directo (ADRES), actas de conciliación, glosas, devoluciones, facturas no radicadas, descuentos por indicadores en capitación, recobros y las que afecten la conciliación de la cartera, dentro de los cinco (5) días hábiles siguientes al recibo del presente requerimiento al correo oficial: cartera@assbasalud.gov.co.
 
 Atentamente,
 
@@ -485,6 +479,7 @@ HECTOR FABIO RAMIREZ
 PROFESIONAL UNIVERSITARIO CARTERA
 Área de Cartera y Cobro Persuasivo
 ASSBASALUD E.S.E. Manizales
-Sistema Inteligente de Cartera SIC-ESE | Correo: carteraassbasalud@gmail.com
+Sistema Inteligente de Cartera SIC-ESE
+Correo: cartera@assbasalud.gov.co | Teléfono: 3117492571
 """
     return subject, plain_content, html_content
