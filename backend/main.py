@@ -1022,6 +1022,52 @@ def send_selected_notifications(batch_req: NotificationBatchRequest, token: str 
         "detalles": results
     }
 
+@app.get("/api/notifications/export-all-zip")
+def export_all_notifications_zip(token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, build_debt_email
+    import io, zipfile, re
+    from fastapi.responses import Response
+
+    data = get_septiembre_dataset()
+    entities = data.get("entidades", [])
+    if not entities:
+        raise HTTPException(status_code=404, detail="No hay entidades en el dataset actual")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for ent in entities:
+            sub, plain, html = build_debt_email(ent)
+            clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', ent.get('cliente', 'Entidad'))[:35]
+            clean_nit = re.sub(r'[^a-zA-Z0-9_-]', '', str(ent.get('nit', '0')))
+            filename = f"Requerimiento_{clean_name}_{clean_nit}.html"
+            zf.writestr(filename, html.encode('utf-8'))
+            
+    zip_buffer.seek(0)
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=Requerimientos_Cobro_ASSBASALUD_Septiembre_2026.zip"}
+    )
+
+@app.get("/api/notifications/export-html/{nit}")
+def export_single_html(nit: str, token: str = Depends(verify_token)):
+    from notifications_service import get_septiembre_dataset, build_debt_email
+    import re
+    from fastapi.responses import Response
+
+    data = get_septiembre_dataset()
+    entity = next((e for e in data.get("entidades", []) if str(e.get("nit")) == str(nit)), None)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Entidad no encontrada para este NIT")
+    sub, plain, html = build_debt_email(entity)
+    clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', entity.get('cliente', 'Entidad'))[:35]
+    clean_nit = re.sub(r'[^a-zA-Z0-9_-]', '', str(entity.get('nit', '0')))
+    return Response(
+        content=html.encode('utf-8'),
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=Requerimiento_{clean_name}_{clean_nit}.html"}
+    )
+
 
 # ==========================================
 # SERVIR FRONTEND ESTATICO EN PRODUCCION

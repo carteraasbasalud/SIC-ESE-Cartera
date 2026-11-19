@@ -347,10 +347,28 @@ def build_debt_email(entity):
     <head><meta charset="utf-8"></head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; padding: 20px 0; margin: 0;">
         <div style="max-width: 680px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-            <!-- Encabezado Institucional -->
-            <div style="background-color: #0f172a; padding: 24px; text-align: center; color: #ffffff;">
-                <h2 style="margin: 0 0 6px 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px;">ASSBASALUD E.S.E. MANIZALES</h2>
-                <p style="margin: 0; font-size: 13px; color: #94a3b8;">NIT: 890.802.233-1 | Subgerencia Financiera y Área de Cartera</p>
+            <!-- Encabezado Institucional con Emblema y Logos -->
+            <div style="background: linear-gradient(135deg, #0b132b 0%, #1c2541 100%); padding: 26px 20px; text-align: center; color: #ffffff; border-bottom: 4px solid #10b981;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto; text-align: center;">
+                    <tr>
+                        <td align="center" style="padding-bottom: 10px;">
+                            <table border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                                <tr>
+                                    <td style="width: 46px; height: 46px; background: #10b981; border-radius: 50%; text-align: center; vertical-align: middle; font-size: 26px; color: #ffffff; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                                        ✚
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center">
+                            <h2 style="margin: 0 0 4px 0; font-size: 21px; font-weight: 800; letter-spacing: 1px; color: #ffffff; text-transform: uppercase;">ASSBASALUD E.S.E. MANIZALES</h2>
+                            <p style="margin: 0; font-size: 12px; color: #94a3b8; font-weight: 500;">EMPRESA SOCIAL DEL ESTADO • NIT: 890.802.233-1</p>
+                            <p style="margin: 6px 0 0; font-size: 11px; color: #34d399; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">Subgerencia Financiera • Área de Cartera y Cobro Persuasivo</p>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <!-- Banner Legal Obligatorio -->

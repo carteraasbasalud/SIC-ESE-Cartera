@@ -34,7 +34,11 @@ import {
   CheckSquare,
   Square,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Copy,
+  ExternalLink,
+  Archive,
+  Download
 } from 'lucide-react';
 import InvoiceDetailsModal from './components/InvoiceDetailsModal';
 
@@ -298,6 +302,9 @@ export default function App() {
   const [notifUploadFile, setNotifUploadFile] = useState(null);
   const [notifUploading, setNotifUploading] = useState(false);
   const [notifUploadMsg, setNotifUploadMsg] = useState('');
+  const [downloadingZip, setDownloadingZip] = useState(false);
+  const [quickCopiedNit, setQuickCopiedNit] = useState(null);
+  const [modalCopyFeedback, setModalCopyFeedback] = useState('');
 
   const API_URL = window.location.origin === 'http://localhost:5173' 
     ? 'http://localhost:8000/api' 
@@ -469,6 +476,135 @@ export default function App() {
       console.error("Error previewing notification:", err);
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const copyRichHtmlToClipboard = async (htmlString) => {
+    try {
+      const blobHtml = new Blob([htmlString], { type: 'text/html' });
+      const blobText = new Blob([htmlString.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()], { type: 'text/plain' });
+      const data = [new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })];
+      await navigator.clipboard.write(data);
+      return true;
+    } catch (err) {
+      console.warn("Fallo ClipboardItem, usando fallback DOM:", err);
+      try {
+        const container = document.createElement('div');
+        container.innerHTML = htmlString;
+        container.style.position = 'fixed';
+        container.style.pointerEvents = 'none';
+        container.style.opacity = '0';
+        document.body.appendChild(container);
+        window.getSelection().removeAllRanges();
+        const range = document.createRange();
+        range.selectNode(container);
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        document.body.removeChild(container);
+        return true;
+      } catch (e2) {
+        console.error("No se pudo copiar al portapapeles:", e2);
+        return false;
+      }
+    }
+  };
+
+  const copyTextToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (err) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      return true;
+    }
+  };
+
+  const downloadHtmlFile = (filename, htmlString) => {
+    const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const printHtmlDocument = (htmlString) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Por favor permita las ventanas emergentes (popups) para imprimir el requerimiento.");
+      return;
+    }
+    printWindow.document.write(htmlString);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 400);
+  };
+
+  const handleExportAllZip = async () => {
+    try {
+      setDownloadingZip(true);
+      const res = await authenticatedFetch(`${API_URL}/notifications/export-all-zip`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Requerimientos_Cobro_ASSBASALUD_Septiembre_2026.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        alert("Error al generar el archivo ZIP de requerimientos.");
+      }
+    } catch (err) {
+      console.error("Error descargando ZIP:", err);
+      alert("Error descargando el archivo ZIP.");
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
+  const handleQuickCopyEntity = async (entity) => {
+    try {
+      const res = await authenticatedFetch(`${API_URL}/notifications/preview/${entity.nit}`);
+      if (res.ok) {
+        const data = await res.json();
+        const success = await copyRichHtmlToClipboard(data.html);
+        if (success) {
+          setQuickCopiedNit(entity.nit);
+          setTimeout(() => setQuickCopiedNit(null), 3000);
+        } else {
+          alert("No se pudo copiar automáticamente. Por favor use la opción de 'Vista Previa' para copiarlo.");
+        }
+      }
+    } catch (err) {
+      console.error("Error en copia rápida:", err);
+    }
+  };
+
+  const handleQuickDownloadEntity = async (entity) => {
+    try {
+      const res = await authenticatedFetch(`${API_URL}/notifications/preview/${entity.nit}`);
+      if (res.ok) {
+        const data = await res.json();
+        const cleanName = (entity.cliente || 'Entidad').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 35);
+        downloadHtmlFile(`Requerimiento_${cleanName}_${entity.nit}.html`, data.html);
+      }
+    } catch (err) {
+      console.error("Error descargando requerimiento:", err);
     }
   };
 
@@ -2460,6 +2596,17 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <button 
                       className="btn-secondary" 
+                      onClick={handleExportAllZip}
+                      disabled={downloadingZip || filteredEntities.length === 0}
+                      title="Descargar paquete ZIP con todos los requerimientos oficiales en formato HTML con logos"
+                      style={{ fontSize: '11.5px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', borderColor: 'var(--accent-indigo)' }}
+                    >
+                      <Archive size={14} color="var(--accent-indigo)" />
+                      <span>{downloadingZip ? 'Generando ZIP...' : `Exportar Todos (ZIP - ${filteredEntities.length})`}</span>
+                    </button>
+
+                    <button 
+                      className="btn-secondary" 
                       onClick={handleToggleSelectAll}
                       style={{ fontSize: '11.5px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
@@ -2572,19 +2719,48 @@ export default function App() {
                                 )}
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', flexWrap: 'wrap' }}>
                                   <button 
                                     className="btn-secondary" 
-                                    title="Ver Vista Previa del Requerimiento Formal"
+                                    title="Ver Vista Previa y Opciones de Exportación / Copia"
                                     onClick={() => handlePreviewEntity(ent)}
                                     style={{ padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
                                   >
                                     <Eye size={13} />
-                                    <span>Vista Previa</span>
+                                    <span>Ver / Exportar</span>
                                   </button>
+
+                                  <button 
+                                    className="btn-secondary" 
+                                    title="Copiar Requerimiento con Logos y Tablas para pegar en Correo (Ctrl+V)"
+                                    onClick={() => handleQuickCopyEntity(ent)}
+                                    style={{ 
+                                      padding: '4px 8px', 
+                                      fontSize: '11px', 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: '4px',
+                                      backgroundColor: quickCopiedNit === ent.nit ? 'rgba(16, 185, 129, 0.2)' : undefined,
+                                      borderColor: quickCopiedNit === ent.nit ? 'var(--primary)' : undefined,
+                                      color: quickCopiedNit === ent.nit ? 'var(--primary)' : undefined
+                                    }}
+                                  >
+                                    <Copy size={13} />
+                                    <span>{quickCopiedNit === ent.nit ? '¡Copiado!' : 'Copiar'}</span>
+                                  </button>
+
+                                  <button 
+                                    className="btn-secondary" 
+                                    title="Descargar archivo HTML individual con logos"
+                                    onClick={() => handleQuickDownloadEntity(ent)}
+                                    style={{ padding: '4px 6px', fontSize: '11px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    <Download size={13} />
+                                  </button>
+
                                   <button 
                                     className="btn-primary" 
-                                    title="Enviar Notificación Oficial Individual"
+                                    title="Enviar Notificación Oficial Individual por SMTP"
                                     disabled={!hasEmail || sendingBatch}
                                     onClick={() => handleSendSingleEntity(ent.nit)}
                                     style={{ padding: '4px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -2933,9 +3109,107 @@ export default function App() {
                 </div>
               ) : previewContent ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ background: 'var(--bg-tertiary)', padding: '10px 14px', borderRadius: '6px', fontSize: '12px', border: '1px solid var(--border-color)' }}>
-                    <strong>Asunto Oficial:</strong> {previewContent.subject}
+                  
+                  {/* Action Toolbar for Manual Dispatch and Export */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-tertiary)', padding: '14px 16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                        Opciones de Exportación y Despacho Individual:
+                      </span>
+                      {modalCopyFeedback && (
+                        <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '700' }}>
+                          ✓ {modalCopyFeedback}
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      <button 
+                        className="btn-primary" 
+                        onClick={async () => {
+                          const ok = await copyRichHtmlToClipboard(previewContent.html);
+                          if (ok) {
+                            setModalCopyFeedback('¡Copiado con logos y tablas! Pégalo con Ctrl+V en tu correo.');
+                            setTimeout(() => setModalCopyFeedback(''), 4000);
+                          }
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '7px 14px', backgroundColor: '#10b981' }}
+                      >
+                        <Copy size={14} />
+                        <span>Copiar para Correo (Ctrl+V en Gmail / Outlook)</span>
+                      </button>
+
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => {
+                          const cleanName = (previewModalEntity.cliente || 'Entidad').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 35);
+                          downloadHtmlFile(`Requerimiento_${cleanName}_${previewModalEntity.nit}.html`, previewContent.html);
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '7px 12px' }}
+                      >
+                        <Download size={14} />
+                        <span>Descargar HTML</span>
+                      </button>
+
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => printHtmlDocument(previewContent.html)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '7px 12px' }}
+                      >
+                        <Printer size={14} />
+                        <span>Imprimir / Guardar en PDF</span>
+                      </button>
+
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => {
+                          const mailto = `mailto:${encodeURIComponent(previewModalEntity.correo || '')}?subject=${encodeURIComponent(previewContent.subject)}`;
+                          window.open(mailto, '_blank');
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '7px 12px' }}
+                      >
+                        <ExternalLink size={14} />
+                        <span>Abrir en Cliente de Correo</span>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '8px', marginTop: '4px', fontSize: '11.5px' }}>
+                      <div style={{ background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Destinatario: <strong>{previewModalEntity.correo || 'Sin correo'}</strong></span>
+                        {previewModalEntity.correo && (
+                          <button 
+                            className="btn-page" 
+                            style={{ padding: '2px 8px', fontSize: '10.5px' }}
+                            onClick={() => {
+                              copyTextToClipboard(previewModalEntity.correo);
+                              setModalCopyFeedback('Correo copiado.');
+                              setTimeout(() => setModalCopyFeedback(''), 3000);
+                            }}
+                          >
+                            Copiar
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border-color)' }}>
+                        <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+                          Asunto: <strong>{previewContent.subject}</strong>
+                        </span>
+                        <button 
+                          className="btn-page" 
+                          style={{ padding: '2px 8px', fontSize: '10.5px' }}
+                          onClick={() => {
+                            copyTextToClipboard(previewContent.subject);
+                            setModalCopyFeedback('Asunto copiado.');
+                            setTimeout(() => setModalCopyFeedback(''), 3000);
+                          }}
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Rendered HTML Container */}
                   <div 
                     style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: '#ffffff', color: '#1e293b', padding: '10px' }}
                     dangerouslySetInnerHTML={{ __html: previewContent.html }}
